@@ -1,0 +1,46 @@
+1. Create web server that serves REST API-s:
+    - python3 -m venv venv
+    - source venv/bin/activate
+    - pip install fastapi uvicorn sqlalchemy pydantic (pytest httpx)
+            fastapi - web framework for building REST API implementations (enhances Startlette)
+            uvicorn - http server that calls FastAPI (and other ASGI) web applications
+            sqlalchemy  - SQL toolkit and Object Relational Mapper (ORM) for Python databases
+            pydantic    - library for data validation and settings management using Python type annotations
+    - nano backend/main.py (app = FastAPI())
+    - uvicorn backend.main:app --host 0.0.0.0 --port 8000   - to start the webserver
+      uvicorn backend.main:app --reload                     - to reload the running webserver
+    - open browser and go to "http://127.0.0.1:8000/"
+    - at "http://127.0.0.1:8000/docs" you can see Swagger documentation
+
+2. Create SQLite tables:
+    - use helper script database/schema.sql to create SQLite file with tables
+      for GEDCOM 5.5.1 Individuals, Families, Events, Sources, and Media
+      sqlite3 ./gedcom.db < ./database/schema.sql
+
+3. Create Python wrapper objects for SQLite database tables -  ./database/models.py
+   Model is pythonic representation of record, it provides abstraction over different databases (SQLite, MySQL, etc)
+   We use models to CRUD (Create, Read, Update, and Delete) records in gedcom.db.
+
+4. Run "cd ./database && python init.db" to create empty sqlite3 gedcom.db based on ./database/models.py
+
+5. Create database session that wraps gedcom.db and that is used by FastAPI to serve API-s:
+    ./backend/database.py
+
+6. Implement endpoint INDIVIDUALS:
+   * "endpoint" in FastAPI (and web APIs in general) refers to a specific URL path
+    combined with an HTTP method (such as GET, POST, PUT, DELETE) where the API listens for requests from client
+    a. Create Pydantic schema for INDIVIDUALS request/response bodies - backend/schemas.py
+    b. Implement CRUD APIs for Individuals table - backend/api/Individuals.py
+    c. Register these APIs with the HTTP server - FastAPI().include_router(individuals.router) in backend/main.py
+
+7. Implement tests for INDIVIDUALS:
+    a. pip install pytest pytest-asyncio httpx
+    b. For shared fixtures use "tests/conftest.py" file
+    c. implement tests/backend/test_individuals.py
+
+
+
+// nnoww - TODO:
+1. Switch to 4 digit GEDCOM_ID
+2. Modify code to generate GEDCOM_ID automatically
+3. Modify test to get by GEDCOM_ID!
