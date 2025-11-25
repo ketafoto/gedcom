@@ -9,7 +9,7 @@ from sqlalchemy import (
     Date,
     Text,
     ForeignKey,
-    LargeBinary,
+    PrimaryKeyConstraint,
 )
 
 from sqlalchemy.orm import relationship, declarative_base
@@ -54,38 +54,38 @@ class Family(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     gedcom_id = Column(String, unique=True, nullable=False, index=True)
-    husband_id = Column(Integer, ForeignKey("main_individuals.id"), nullable=True)
-    wife_id = Column(Integer, ForeignKey("main_individuals.id"), nullable=True)
     marriage_date = Column(Date, nullable=True)
     marriage_place = Column(String, nullable=True)
     divorce_date = Column(Date, nullable=True)
+    family_type = Column(String, nullable=False, default="marriage")
+    notes = Column(Text, nullable=True)
 
-    husband = relationship("Individual", foreign_keys=[husband_id])
-    wife = relationship("Individual", foreign_keys=[wife_id])
-    children = relationship("FamilyChild", back_populates="family", cascade="all, delete-orphan")
+    # Relationships
     members = relationship("FamilyMember", back_populates="family", cascade="all, delete-orphan")
+    children = relationship("FamilyChild", back_populates="family", cascade="all, delete-orphan")
     events = relationship("Event", back_populates="family", cascade="all, delete-orphan")
-
-class FamilyChild(Base):
-    __tablename__ = "main_family_children"
-
-    id = Column(Integer, primary_key=True, index=True)
-    family_id = Column(Integer, ForeignKey("main_families.id"), nullable=False)
-    child_id = Column(Integer, ForeignKey("main_individuals.id"), nullable=False)
-
-    family = relationship("Family", back_populates="children")
-    child = relationship("Individual")
+    media = relationship("Media", back_populates="family", cascade="all, delete-orphan")
 
 class FamilyMember(Base):
     __tablename__ = "main_family_members"
 
-    id = Column(Integer, primary_key=True, index=True)
-    family_id = Column(Integer, ForeignKey("main_families.id"), nullable=False)
-    individual_id = Column(Integer, ForeignKey("main_individuals.id"), nullable=False)
+    family_id = Column(Integer, ForeignKey("main_families.id"), primary_key=True, nullable=False)
+    individual_id = Column(Integer, ForeignKey("main_individuals.id"), primary_key=True, nullable=False)
     role = Column(String, nullable=True)
 
+    # Relationships
     family = relationship("Family", back_populates="members")
     individual = relationship("Individual", back_populates="families")
+
+class FamilyChild(Base):
+    __tablename__ = "main_family_children"
+
+    family_id = Column(Integer, ForeignKey("main_families.id"), primary_key=True, nullable=False)
+    child_id = Column(Integer, ForeignKey("main_individuals.id"), primary_key=True, nullable=False)
+
+    # Relationships
+    family = relationship("Family", back_populates="children")
+    child = relationship("Individual")
 
 class Event(Base):
     __tablename__ = "main_events"
@@ -93,11 +93,12 @@ class Event(Base):
     id = Column(Integer, primary_key=True, index=True)
     individual_id = Column(Integer, ForeignKey("main_individuals.id"), nullable=True)
     family_id = Column(Integer, ForeignKey("main_families.id"), nullable=True)
-    type_code = Column(String, nullable=False) # e.g., BIRT, DEAT, MARR
-    date = Column(Date, nullable=True)
-    place = Column(String, nullable=True)
-    notes = Column(Text, nullable=True)
+    event_type_code = Column(String, nullable=False)  # References types_event(code)
+    event_date = Column(Date, nullable=True)
+    event_place = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
 
+    # Relationships
     individual = relationship("Individual", back_populates="events")
     family = relationship("Family", back_populates="events")
 
@@ -106,12 +107,15 @@ class Media(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     individual_id = Column(Integer, ForeignKey("main_individuals.id"), nullable=True)
-    title = Column(String, nullable=False)
+    family_id = Column(Integer, ForeignKey("main_families.id"), nullable=True)
     file_path = Column(String, nullable=True)
-    media_blob = Column(LargeBinary, nullable=True)
-    notes = Column(Text, nullable=True)
+    media_type_code = Column(String, nullable=True)  # References types_media(code)
+    media_date = Column(Date, nullable=True)
+    description = Column(Text, nullable=True)
 
+    # Relationships
     individual = relationship("Individual", back_populates="media")
+    family = relationship("Family", back_populates="media")
 
 class Source(Base):
     __tablename__ = "main_sources"
@@ -120,4 +124,5 @@ class Source(Base):
     title = Column(String, nullable=False)
     author = Column(String, nullable=True)
     publication = Column(String, nullable=True)
+    publish_date = Column(Date, nullable=True)
     notes = Column(Text, nullable=True)

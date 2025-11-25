@@ -38,9 +38,5 @@
     b. For shared fixtures use "tests/conftest.py" file
     c. implement tests/backend/test_individuals.py
 
+8. Implement all the rest of GEDCOM 5.5.1 (families, events, media - see schema.sql)
 
-
-// nnoww - TODO:
-1. Switch to 4 digit GEDCOM_ID
-2. Modify code to generate GEDCOM_ID automatically
-3. Modify test to get by GEDCOM_ID!

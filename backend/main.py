@@ -9,14 +9,14 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from database import db
-from backend.api import individuals
+from backend.api import individuals, families, events, media
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
     try:
         # Ensure the underlying database file was initialized and is accessible
-        #
+
         engine = db.init_db_once()
         with engine.connect() as connection:
             connection.execute(text("SELECT 1 FROM main_individuals LIMIT 1"))
@@ -27,7 +27,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(individuals.router)
+app.include_router(families.router)
+app.include_router(events.router)
+app.include_router(media.router)
 
 @app.get("/")
 def read_root():
-    return {"message": "GEDCOM API"}
+    return {"message": "Genealogy Database API - See /docs for interactive documentation"}
