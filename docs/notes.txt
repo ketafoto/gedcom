@@ -21,7 +21,7 @@
    Model is pythonic representation of record, it provides abstraction over different databases (SQLite, MySQL, etc)
    We use models to CRUD (Create, Read, Update, and Delete) records in gedcom.db.
 
-4. Run "cd ./database && python init.db" to create empty sqlite3 gedcom.db based on ./database/models.py
+4. Run "cd ./database && python init.db" to create empty sqlite3 gedcom.sqlite based on ./database/models.py
 
 5. Create database session that wraps gedcom.db and that is used by FastAPI to serve API-s:
     ./backend/database.py

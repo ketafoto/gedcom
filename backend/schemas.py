@@ -30,8 +30,10 @@ class IndividualBase(BaseModel):
     gedcom_id: Optional[str] = None
     sex_code: Optional[str] = None
     birth_date: Optional[date] = None
+    birth_date_approx: Optional[str] = None  # Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
     birth_place: Optional[str] = None
     death_date: Optional[date] = None
+    death_date_approx: Optional[str] = None  # Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
     death_place: Optional[str] = None
     notes: Optional[str] = None
 
@@ -77,8 +79,10 @@ class FamilyChild(FamilyChildBase):
 class FamilyBase(BaseModel):
     gedcom_id: Optional[str] = None
     marriage_date: Optional[date] = None
+    marriage_date_approx: Optional[str] = None  # Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
     marriage_place: Optional[str] = None
     divorce_date: Optional[date] = None
+    divorce_date_approx: Optional[str] = None  # Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
     family_type: Optional[str] = "marriage"
     notes: Optional[str] = None
 
@@ -106,6 +110,7 @@ class EventBase(BaseModel):
     family_id: Optional[int] = None
     event_type_code: str
     event_date: Optional[date] = None
+    event_date_approx: Optional[str] = None  # Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
     event_place: Optional[str] = None
     description: Optional[str] = None
 
@@ -130,6 +135,7 @@ class MediaBase(BaseModel):
     file_path: Optional[str] = None
     media_type_code: Optional[str] = None
     media_date: Optional[date] = None
+    media_date_approx: Optional[str] = None  # Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
     description: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -142,5 +148,61 @@ class MediaUpdate(MediaBase):
 
 class Media(MediaBase):
     id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+# ==================== Header/Submitter Metadata ====================
+
+class HeaderBase(BaseModel):
+    """GEDCOM Header and Submitter metadata for round-trip fidelity."""
+    # Source system (SOUR)
+    source_system_id: Optional[str] = None
+    source_system_name: Optional[str] = None
+    source_version: Optional[str] = None
+    source_corporation: Optional[str] = None
+
+    # File info
+    file_name: Optional[str] = None
+    creation_date: Optional[str] = None  # Raw GEDCOM date
+    creation_time: Optional[str] = None
+
+    # GEDCOM version (GEDC)
+    gedcom_version: Optional[str] = "5.5.1"
+    gedcom_form: Optional[str] = "LINEAGE-LINKED"
+
+    # Other header fields
+    charset: Optional[str] = "UTF-8"
+    language: Optional[str] = None
+    copyright: Optional[str] = None
+    destination: Optional[str] = None
+    note: Optional[str] = None
+
+    # Submitter info (SUBM record)
+    submitter_id: Optional[str] = None
+    submitter_name: Optional[str] = None
+    submitter_address: Optional[str] = None
+    submitter_city: Optional[str] = None
+    submitter_state: Optional[str] = None
+    submitter_postal: Optional[str] = None
+    submitter_country: Optional[str] = None
+    submitter_phone: Optional[str] = None
+    submitter_email: Optional[str] = None
+    submitter_fax: Optional[str] = None
+    submitter_www: Optional[str] = None
+
+    # Timestamps
+    imported_at: Optional[str] = None
+    last_modified: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class HeaderCreate(HeaderBase):
+    pass
+
+class HeaderUpdate(HeaderBase):
+    pass
+
+class Header(HeaderBase):
+    id: int = 1  # Always 1 (singleton)
 
     model_config = ConfigDict(from_attributes=True)

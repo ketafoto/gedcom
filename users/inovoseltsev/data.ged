@@ -1,0 +1,256 @@
+0 HEAD
+1 SOUR GEDCOM-Export-System
+2 NAME Genealogy Database GEDCOM Export
+2 VERS 5.5.1
+1 DATE 26 NOV 2025
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 LANG English
+1 SUBM @U00001@
+0 @U00001@ SUBM
+1 NAME Igor Novoseltsev
+1 ADDR Kfar-Saba, Israel
+0 @I00001@ INDI
+1 NAME Igor /Novoseltsev/
+1 SEX M
+1 BIRT
+2 DATE 08 JUN 1975
+2 PLAC Novograd-Volinsky, Ukraine, USSR
+1 FAMC @F00002@
+1 FAMS @F00001@
+1 OCCU Software Engineer
+1 NOTE Software engineer, immigrated to Israel 2017
+0 @I00002@ INDI
+1 NAME Alona /Tovkun/
+2 TYPE maiden
+1 NAME Alona /Novoseltsev/
+2 TYPE married
+1 NAME Elena /Tovkun/
+2 TYPE birth
+1 SEX F
+1 BIRT
+2 DATE 24 SEP 1974
+2 PLAC Kiev, Ukraine, USSR
+1 FAMC @F00030@
+1 FAMS @F00001@
+1 OCCU Software Engineer
+0 @I00003@ INDI
+1 NAME Aya /Novoseltsev/
+1 SEX F
+1 BIRT
+2 DATE 29 SEP 2006
+2 PLAC Tel-Aviv, Israel
+1 FAMC @F00001@
+0 @I00004@ INDI
+1 NAME Sonya /Novoseltsev/
+1 SEX F
+1 BIRT
+2 DATE 16 JUL 2010
+2 PLAC Petah-Tikva, Israel
+1 FAMC @F00001@
+0 @I00005@ INDI
+1 NAME Tom /Novoseltsev/
+1 SEX M
+1 BIRT
+2 DATE 10 NOV 2015
+2 PLAC Beer-Sheva, Israel
+1 FAMC @F00001@
+0 @I00006@ INDI
+1 NAME Mihail /Novoseltsev/
+1 SEX M
+1 BIRT
+2 DATE 14 MAY 1947
+2 PLAC Novograd-Volinsky, Ukraine, USSR
+1 FAMC @F00020@
+1 FAMS @F00002@
+1 OCCU Jewellery Casting
+1 NOTE Mihail (Michael), father of Igor Novoseltsev
+0 @I00007@ INDI
+1 NAME Ludmila /Kriulina/
+2 TYPE maiden
+1 NAME Ludmila /Novoseltsev/
+2 TYPE married
+1 SEX F
+1 BIRT
+2 DATE 26 AUG 1946
+2 PLAC Tula, Russia, USSR
+1 FAMC @F00021@
+1 FAMS @F00002@
+1 OCCU Piano Teacher
+1 NOTE Ludmila Kriulina, mother of Igor Novoseltsev
+0 @I00008@ INDI
+1 NAME Marina /Novoseltsev/
+2 TYPE maiden
+1 NAME Marina /Obedina/
+2 TYPE married
+1 SEX F
+1 BIRT
+2 DATE 30 AUG 1971
+2 PLAC Novograd-Volinsky, Ukraine, USSR
+1 FAMC @F00002@
+1 FAMS @F00003@
+1 OCCU Super Nanny
+1 NOTE Sister of Igor Novoseltsev
+0 @I00009@ INDI
+1 NAME Vladimir /Obedin/
+1 SEX M
+1 FAMS @F00003@
+1 NOTE Husband of Marina Obedina
+0 @I00010@ INDI
+1 NAME Viacheslav /Obedin/
+1 SEX M
+1 BIRT
+2 DATE 22 MAY 1995
+2 PLAC Nikolaev, Ukraine
+1 FAMC @F00003@
+1 FAMS @F00005@
+1 OCCU Tech Support, Microsoft
+1 NOTE Son of Marina Obedina and Vladimir Obedin
+0 @I00011@ INDI
+1 NAME Yulya /Obedina/
+1 SEX F
+1 FAMC @F00003@
+1 NOTE Daughter of Marina Obedina and Vladimir Obedin
+0 @I00012@ INDI
+1 NAME Valeria /Obedina/
+2 TYPE maiden
+1 NAME Valeria /Yakobov/
+2 TYPE married
+1 SEX F
+1 BIRT
+2 DATE 25 JUL 2021
+2 PLAC Bat-Yam, Israel
+1 FAMC @F00003@
+1 FAMS @F00004@
+1 OCCU Back Office Worker (Wedding Organization)
+1 NOTE Daughter of Marina Obedina and Vladimir Obedin
+0 @I00013@ INDI
+1 NAME Baruch /Yakobov/
+1 SEX M
+1 FAMS @F00004@
+1 NOTE Husband of Valeria Obedin
+0 @I00014@ INDI
+1 NAME Omer /Bar/
+1 SEX M
+1 FAMS @F00005@
+1 NOTE Husband of Viacheslav Obedin (same-sex marriage)
+0 @I00015@ INDI
+1 NAME Mariya /Kliger/
+2 TYPE maiden
+1 NAME Mariya /Kriulina/
+2 TYPE married
+1 SEX F
+1 BIRT
+2 DATE 17 JUL 1917
+2 PLAC Kamenets-Podolsky, Vinnitsa District, Ukraine
+1 FAMS @F00021@
+1 FAMS @F00022@
+1 OCCU Nurse
+1 DEAT
+2 DATE ABT 1980
+1 NOTE Mother of Ludmila Kriulina
+0 @I00016@ INDI
+1 NAME Kasyan /Kriulin/
+1 SEX M
+1 NOTE Father of Ludmila Kriulina, wounded in war, met wife in hospital
+0 @I00017@ INDI
+1 NAME Efim /Kliger/
+2 TYPE birth name
+1 NAME Efim /Fima/
+1 SEX M
+1 FAMC @F00022@
+1 NOTE Uncle of Ludmila Kriulina
+0 @I00018@ INDI
+1 NAME Aleksandra /X/
+1 SEX F
+1 FAMC @F00022@
+1 NOTE Aunt Shura, sister of Mariya Kriulina
+0 @I00019@ INDI
+1 NAME Galina /Kriulin/
+1 SEX F
+1 BIRT
+2 DATE ABT 1950
+1 FAMC @F00021@
+1 NOTE Sister of Ludmila Kriulina
+0 @I00020@ INDI
+1 NAME Grigorij /Kriulin/
+1 SEX M
+1 FAMC @F00021@
+1 NOTE Brother of Ludmila Kriulina
+0 @I00021@ INDI
+1 NAME Ivan /Novoseltsev/
+1 SEX M
+1 FAMS @F00020@
+1 NOTE Father of Mihail Novoseltsev
+0 @I00022@ INDI
+1 NAME Nina /Kacher/
+1 SEX F
+1 BIRT
+2 DATE ABT 1920
+1 FAMS @F00020@
+1 NOTE Mother of Mihail Novoseltsev
+0 @I00023@ INDI
+1 NAME Kas'yan /Kriulin/
+1 SEX M
+1 FAMS @F00021@
+1 NOTE Father of Ludmila Kriulina, wounded in WWII, reunited with wife Mariya in hospital
+0 @F00001@ FAM
+1 HUSB @I00001@
+1 WIFE @I00002@
+1 MARR
+2 DATE 12 MAR 2006
+2 PLAC Petah Tikva, Israel
+1 CHIL @I00003@
+1 CHIL @I00004@
+1 CHIL @I00005@
+1 NOTE Family of Igor Novoseltsev and Alona Tovkun
+0 @F00002@ FAM
+1 HUSB @I00006@
+1 WIFE @I00007@
+1 MARR
+2 DATE ABT 1970
+1 CHIL @I00001@
+1 CHIL @I00008@
+1 NOTE Parents of Igor Novoseltsev and Marina Obedina
+0 @F00003@ FAM
+1 HUSB @I00009@
+1 WIFE @I00008@
+1 MARR
+2 DATE ABT 1990
+1 CHIL @I00010@
+1 CHIL @I00011@
+1 CHIL @I00012@
+1 NOTE Family of Marina Obedina and Vladimir Obedin
+0 @F00004@ FAM
+1 HUSB @I00013@
+1 WIFE @I00012@
+1 MARR
+2 DATE ABT 2023
+1 NOTE Marriage of Valeria Obedin and Baruch Yakobov
+0 @F00005@ FAM
+1 HUSB @I00014@
+1 WIFE @I00010@
+1 NOTE Same-sex marriage of Omer Bar and Viacheslav Obedin
+0 @F00020@ FAM
+1 HUSB @I00021@
+1 WIFE @I00022@
+1 CHIL @I00006@
+1 NOTE Parents of Mihail Novoseltsev (grandparents of Igor)
+0 @F00021@ FAM
+1 HUSB @I00023@
+1 WIFE @I00015@
+1 CHIL @I00007@
+1 CHIL @I00019@
+1 CHIL @I00020@
+1 NOTE Parents of Ludmila Kriulina
+0 @F00022@ FAM
+1 WIFE @I00015@
+1 CHIL @I00017@
+1 CHIL @I00018@
+1 NOTE Family information for extended genealogy
+0 @F00030@ FAM
+1 CHIL @I00002@
+1 NOTE Parents of Alona Tovkun (family details unknown)
+0 TRLR

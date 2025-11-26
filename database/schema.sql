@@ -61,8 +61,10 @@ CREATE TABLE IF NOT EXISTS main_individuals (
   gedcom_id TEXT UNIQUE,
   sex_code TEXT REFERENCES types_sex(code),
   birth_date TEXT,
+  birth_date_approx TEXT,   -- Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
   birth_place TEXT,
   death_date TEXT,
+  death_date_approx TEXT,   -- Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
   death_place TEXT,
   notes TEXT
 );
@@ -84,8 +86,10 @@ CREATE TABLE IF NOT EXISTS main_families (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   gedcom_id TEXT UNIQUE,
   marriage_date TEXT,
+  marriage_date_approx TEXT,  -- Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
   marriage_place TEXT,
   divorce_date TEXT,
+  divorce_date_approx TEXT,   -- Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
   family_type TEXT DEFAULT 'marriage',
   notes TEXT
 );
@@ -112,6 +116,7 @@ CREATE TABLE IF NOT EXISTS main_events (
   family_id INTEGER REFERENCES main_families(id),
   event_type_code TEXT REFERENCES types_event(code),
   event_date TEXT,
+  event_date_approx TEXT,     -- Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
   event_place TEXT,
   description TEXT
 );
@@ -134,5 +139,45 @@ CREATE TABLE IF NOT EXISTS main_media (
   file_path TEXT,
   media_type_code TEXT REFERENCES types_media(code),
   media_date TEXT,
+  media_date_approx TEXT,     -- Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
   description TEXT
+);
+
+-- GEDCOM Header/Submitter metadata table (singleton - one record per database)
+-- Stores information from HEAD and SUBM records for round-trip fidelity
+CREATE TABLE IF NOT EXISTS meta_header (
+  id INTEGER PRIMARY KEY CHECK (id = 1),  -- Only one record allowed
+  -- Source system (SOUR)
+  source_system_id TEXT,      -- e.g., "GEDCOM-Export-System"
+  source_system_name TEXT,    -- SOUR.NAME e.g., "Genealogy Database GEDCOM Export"
+  source_version TEXT,        -- SOUR.VERS e.g., "5.5.1"
+  source_corporation TEXT,    -- SOUR.CORP
+  -- File info
+  file_name TEXT,             -- FILE tag
+  creation_date TEXT,         -- DATE tag (raw GEDCOM format)
+  creation_time TEXT,         -- DATE.TIME tag
+  -- GEDCOM version (GEDC)
+  gedcom_version TEXT DEFAULT '5.5.1',    -- GEDC.VERS
+  gedcom_form TEXT DEFAULT 'LINEAGE-LINKED', -- GEDC.FORM
+  -- Other header fields
+  charset TEXT DEFAULT 'UTF-8',           -- CHAR
+  language TEXT,                          -- LANG
+  copyright TEXT,                         -- COPR
+  destination TEXT,                       -- DEST
+  note TEXT,                              -- NOTE
+  -- Submitter info (SUBM record)
+  submitter_id TEXT,          -- @U00001@ etc.
+  submitter_name TEXT,        -- SUBM.NAME
+  submitter_address TEXT,     -- SUBM.ADDR
+  submitter_city TEXT,        -- SUBM.ADDR.CITY
+  submitter_state TEXT,       -- SUBM.ADDR.STAE
+  submitter_postal TEXT,      -- SUBM.ADDR.POST
+  submitter_country TEXT,     -- SUBM.ADDR.CTRY
+  submitter_phone TEXT,       -- SUBM.PHON
+  submitter_email TEXT,       -- SUBM.EMAIL
+  submitter_fax TEXT,         -- SUBM.FAX
+  submitter_www TEXT,         -- SUBM.WWW
+  -- Timestamps for tracking
+  imported_at TEXT,           -- When the GEDCOM was imported
+  last_modified TEXT          -- Last modification date (for export)
 );

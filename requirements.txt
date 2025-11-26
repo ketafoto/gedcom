@@ -1,0 +1,12 @@
+# Core dependencies - use minimum versions with compatibility
+fastapi>=0.100.0
+pydantic>=2.0.0
+SQLAlchemy>=2.0.0
+uvicorn>=0.20.0
+
+# Testing dependencies
+pytest>=8.0.0
+httpx>=0.25.0  # Required for FastAPI TestClient
+
+# Transitive dependencies (installed automatically, listed for reference)
+# starlette, anyio, typing_extensions, etc. are pulled by fastapi/pydantic
