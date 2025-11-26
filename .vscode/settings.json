@@ -1,13 +1,17 @@
 {
     "cSpell.words": [
+        "addoption",
         "ASGI",
         "asyncio",
         "autoflush",
+        "autouse",
         "conftest",
         "exitstatus",
         "fastapi",
         "gedcom",
         "httpx",
+        "inovoseltsev",
+        "novoseltsev",
         "pydantic",
         "pytest",
         "pythonic",
@@ -47,5 +51,8 @@
     "python.testing.autoTestDiscoverOnSaveEnabled": true,
 
     "workbench.colorTheme": "Best Themes - Darcula",
+    "cursorpyright.analysis.extraPaths": [
+        "./venv/lib/python3.*/site-packages"
+    ],
  }
 

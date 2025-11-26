@@ -1,27 +1,67 @@
-# This file provides reusable test fixtures including a test database and test client
-
-import os
+# tests/backend/conftest.py - Backend-specific test fixtures
+#
+# Test Configuration:
+# - Uses tests/backend/<test_module>/temp/ as "users" folder
+# - Database is reset between tests
+#
 
 import pytest
-
-from sqlalchemy import create_engine
-
-from sqlalchemy.orm import sessionmaker
-
+from pathlib import Path
 from fastapi.testclient import TestClient
-
 from database import db
+from tests.conftest import get_test_user
+from tests.backend.db_utils import DatabaseUtils, IndividualVerifier, FamilyVerifier
 
-TEST_DB_FILE = "./test_gedcom.db"
 
 @pytest.fixture(scope="function")
-def client():
-    """Create a test client with test database session injected."""
-    db.init_db_once(TEST_DB_FILE) # Initialize DB engine and underling file
-    from backend.main import app # IMPORTANT: import 'app' after engine initialization! Otherwise it will use default *.db file!
+def test_user(request):
+    """Provide UserInfo for the test module."""
+    test_module_path = Path(request.fspath)
+    return get_test_user(test_module_path)
+
+
+@pytest.fixture(scope="function")
+def client(test_user):
+    """
+    Create a test client with test database session injected.
+
+    The database is initialized fresh for each test function,
+    using the test-specific directory.
+    """
+    # Reset any existing engine state
+    db.reset_engine()
+
+    # Initialize DB engine for test user
+    db.init_db_once(test_user)
+
+    # IMPORTANT: import 'app' after engine initialization!
+    # Otherwise it will try to use the default user's database
+    from backend.main import app
 
     with TestClient(app) as test_client:
         yield test_client
+
+    # Reset engine after test
+    db.reset_engine()
+
+
+@pytest.fixture(scope="function")
+def db_utils(test_user, client):
+    """Provide DatabaseUtils instance for database verification."""
+    return DatabaseUtils(test_user.db_file)
+
+
+@pytest.fixture(scope="function")
+def individual_verifier(db_utils):
+    """Provide IndividualVerifier instance."""
+    return IndividualVerifier(db_utils)
+
+
+@pytest.fixture(scope="function")
+def family_verifier(db_utils):
+    """Provide FamilyVerifier instance."""
+    return FamilyVerifier(db_utils)
+
 
 @pytest.fixture
 def sample_individual_data():
@@ -40,27 +80,3 @@ def sample_individual_data():
             }
         ]
     }
-
-def pytest_sessionstart(session):
-    """
-    Called before the whole test session starts.
-    Remove the test DB file if it exists to ensure a clean slate.
-    """
-    if os.path.exists(TEST_DB_FILE):
-        os.remove(TEST_DB_FILE)
-        print(f"Removed existing test DB file at start: {TEST_DB_FILE}")
-
-def pytest_sessionfinish(session, exitstatus):
-    """
-    Called after the whole test session finishes.
-    If all tests passed (exitstatus == 0), remove the test DB file.
-    """
-    test_paths = session.config.option.file_or_dir
-
-    if exitstatus == 0:
-        if not test_paths:
-            if os.path.exists(TEST_DB_FILE):
-                os.remove(TEST_DB_FILE)
-                print(f"Removed test database file: {TEST_DB_FILE}")
-        else:
-            print(f"Test DB file retained because running subset of tests: {test_paths}")
