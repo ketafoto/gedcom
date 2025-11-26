@@ -8,6 +8,7 @@
         "fastapi",
         "gedcom",
         "httpx",
+        "novoseltsev",
         "pydantic",
         "pytest",
         "pythonic",
