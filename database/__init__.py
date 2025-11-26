@@ -5,3 +5,12 @@
 #
 # Even an empty __init__.py (0 bytes) file suffices.
 
+# To enable import gedcom_import.py and gedcom_export.py from within tests, run by pytest:
+#
+from . import db
+from . import schemas
+from . import models
+from .individuals import create_individual
+from .families import create_family
+
+__all__ = ["db", "schemas", "models", "create_individual", "create_family"]

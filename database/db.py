@@ -1,11 +1,11 @@
-# Create SqlAlchemy session object connected to the gedcom.db SQLite database.
+# Create SqlAlchemy session object connected to the gedcom.sqlite SQLite database.
 # We use Python generator to implement it. FastAPI will use this session to access the database file.
 #
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from .models import Base
 
-DEFAULT_DATABASE_FILE = "gedcom.db"
+DEFAULT_DATABASE_FILE = "database/gedcom.sqlite"
 
 engine        = None
 SessionLocal  = None

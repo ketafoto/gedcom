@@ -20,10 +20,10 @@ class DatabaseUtils:
             List of dictionaries where each dict represents a row
         """
         import os
-        if not os.path.exists(TEST_DB_FILE):
+        if not TEST_DB_FILE.exists():
             pytest.fail(f"Test database file {TEST_DB_FILE} does not exist!")
 
-        conn = sqlite3.connect(TEST_DB_FILE)
+        conn = sqlite3.connect(str(TEST_DB_FILE))
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
