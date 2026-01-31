@@ -5,24 +5,25 @@
 # Open http://localhost:8000/docs for interactive Swagger UI documentation
 #
 # Multi-user support:
-# - By default, uses the "inovoseltsev" user
-# - Set environment variable GEDCOM_USER to change the active user
-# - Future: frontend will provide username via login
+# - Authentication is disabled (uses default user)
+# - Each user has their own database in users/<username>/data.sqlite
+# - To change user, modify DEFAULT_USERNAME in backend/api/auth.py
 #
-import os
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from database import db
 from database.user_info import UserInfo
-from backend.api import individuals, families, events, media, header
+from backend.api import individuals, families, events, media, header, auth, types, export
+from backend.logging import setup_logging
 
+# Initialize backend logging to use syslog
+setup_logging()
 
-def get_active_username() -> str:
-    """Get the currently active username from environment or default."""
-    default_user = UserInfo()
-    return os.environ.get("GEDCOM_USER", default_user.username)
+logger = logging.getLogger("gedcom.backend")
 
 
 @asynccontextmanager
@@ -36,28 +37,29 @@ async def lifespan(app: FastAPI):
             engine = db.init_db_once()  # Returns existing engine
             with engine.connect() as connection:
                 connection.execute(text("SELECT 1 FROM main_individuals LIMIT 1"))
+            logger.info(f"Database verified for user: {existing_user.username}")
         except Exception as e:
-            print(f"❌ Database verification failed: {e}")
+            logger.error(f"Database verification failed: {e}")
             raise
         yield
         return
 
-    # Normal startup - initialize database
-    username = get_active_username()
+    # Initialize database for default user
+    username = auth.DEFAULT_USERNAME
     user_info = UserInfo(username=username)
 
     try:
-        print(f"🔧 Initializing database for user: {username}")
-        print(f"   Database path: {user_info.db_file}")
+        logger.info(f"Initializing database for user: {username}")
+        logger.info(f"Database path: {user_info.db_file}")
 
         engine = db.init_db_once(user_info)
         with engine.connect() as connection:
             connection.execute(text("SELECT 1 FROM main_individuals LIMIT 1"))
 
-        print(f"✅ Database ready for user: {username}")
+        logger.info(f"Database ready for user: {username}")
     except Exception as e:
-        print(f"❌ Database not initialized or unavailable for user {username}:", e)
-        raise RuntimeError(f"Database is not initialized properly for user {username}. Run database initialization.")
+        logger.error(f"Database initialization failed: {e}")
+        raise
     yield
 
     # Cleanup on shutdown
@@ -70,11 +72,25 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# CORS middleware for frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth.router)
+app.include_router(types.router)
 app.include_router(individuals.router)
 app.include_router(families.router)
 app.include_router(events.router)
 app.include_router(media.router)
 app.include_router(header.router)
+app.include_router(export.router)
 
 
 @app.get("/")
@@ -102,3 +118,9 @@ def get_user_endpoint():
         "gedcom_file": str(user_info.gedcom_file),
         "media_dir": str(user_info.media_dir),
     }
+
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy"}

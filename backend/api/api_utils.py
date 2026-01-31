@@ -81,9 +81,11 @@ def generate_family_note(
     is_same_sex = False
     if family_type == "same-sex":
         is_same_sex = True
-    elif husband_name and wife_name and husband_sex and wife_sex:
+    elif (husband_name is not None and wife_name is not None and
+          husband_sex is not None and wife_sex is not None):
         # Check if both have same sex code (both M or both F)
-        if husband_sex == wife_sex:
+        # Convert to strings to ensure we're comparing values, not Column objects
+        if str(husband_sex) == str(wife_sex):
             is_same_sex = True
 
     # Family members part
