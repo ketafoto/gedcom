@@ -1,8 +1,23 @@
+# pip install -r requirements.txt - to install Python 3rd parties
+# It is recommended to do it in virtual environment and launch servers there:
+# Ubuntu:
+# - python3 -m venv venv-linux   - !!! one time only - to install venv !!!
+# - source venv-linux/bin/activate
+# - pip install -r requirements.txt
+# Win/PowerShell:
+# - python -m venv venv-win   - !!! one time only - to install venv !!!
+# - .\venv-win\Scripts\Activate.ps1
+# - pip install -r requirements.txt
+#
+
 # Core dependencies - use minimum versions with compatibility
 fastapi>=0.100.0
 pydantic>=2.0.0
 SQLAlchemy>=2.0.0
 uvicorn>=0.20.0
+
+# Form data support (for file uploads)
+python-multipart>=0.0.6
 
 # Testing dependencies
 pytest>=8.0.0

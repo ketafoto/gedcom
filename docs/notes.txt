@@ -1,11 +1,22 @@
-1. Create web server that serves REST API-s:
-    - python3 -m venv venv
-    - source venv/bin/activate
-    - pip install fastapi uvicorn sqlalchemy pydantic (pytest httpx)
+BACKEND
+========================================================================
+0. To start development
+    Ubuntu:
+    - python3 -m venv venv-linux   - !!! one time only - to install venv !!!
+    - source venv-linux/bin/activate
+    - pip install -r requirements.txt
             fastapi - web framework for building REST API implementations (enhances Startlette)
             uvicorn - http server that calls FastAPI (and other ASGI) web applications
             sqlalchemy  - SQL toolkit and Object Relational Mapper (ORM) for Python databases
             pydantic    - library for data validation and settings management using Python type annotations
+
+    Win/PowerShell:
+    - python -m venv venv-win   - !!! one time only - to install venv !!!
+    - .\venv-win\Scripts\Activate.ps1
+    - pip install -r requirements.txt
+
+
+1. Create web server that serves REST API-s:
     - nano backend/main.py (app = FastAPI())
     - uvicorn backend.main:app --host 0.0.0.0 --port 8000   - to start the webserver
       uvicorn backend.main:app --reload                     - to reload the running webserver
@@ -39,4 +50,39 @@
     c. implement tests/backend/test_individuals.py
 
 8. Implement all the rest of GEDCOM 5.5.1 (families, events, media - see schema.sql)
+
+
+
+FRONTEND
+================================================================================
+0. To start development
+    - cd ./frontend
+    - npm run dev
+
+1.
+frontend/
+├── src/
+│   ├── api/         # API client and endpoints
+│   ├── components/  # Reusable UI components
+│   ├── contexts/    # React contexts (Auth)
+│   ├── pages/       # Page components
+│   ├── types/       # TypeScript types
+│   └── App.tsx      # Main app with routing
+├── vite.config.ts   # Vite configuration
+└── index.html       # Entry point
+
+
+
+
+HOW-TO
+================================================================================
+1.
+Backend: http://localhost:8000 (FastAPI + Auth)
+Frontend: http://localhost:3000 (React + Vite)
+
+2.
+Use separate database for other user:
+change DEFAULT_USERNAME in backend/api/auth.py
+
+
 
