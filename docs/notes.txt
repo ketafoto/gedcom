@@ -1,14 +1,30 @@
-1. Create web server that serves REST API-s:
-    - python3 -m venv venv
-    - source venv/bin/activate
-    - pip install fastapi uvicorn sqlalchemy pydantic (pytest httpx)
+LIKBEZ ;-)
+
+
+BACKEND
+========================================================================
+0. To start development
+    Ubuntu:
+    - python3 -m venv venv-linux   - !!! one time only - to install venv !!!
+    - source venv-linux/bin/activate
+    - pip install -r requirements.txt
             fastapi - web framework for building REST API implementations (enhances Startlette)
             uvicorn - http server that calls FastAPI (and other ASGI) web applications
             sqlalchemy  - SQL toolkit and Object Relational Mapper (ORM) for Python databases
             pydantic    - library for data validation and settings management using Python type annotations
+
+    Win/PowerShell:
+    - python -m venv venv-win   - !!! one time only - to install venv !!!
+    - .\venv-win\Scripts\Activate.ps1
+    - pip install -r requirements.txt
+
+
+1. Create web server that serves REST API-s:
     - nano backend/main.py (app = FastAPI())
-    - uvicorn backend.main:app --host 0.0.0.0 --port 8000   - to start the webserver
-      uvicorn backend.main:app --reload                     - to reload the running webserver
+    - uvicorn backend.main:app --host 0.0.0.0 --port 8000   - to start the webserver in production
+      uvicorn backend.main:app --reload                     - to start the webserver in development (127.0.0.1:8000)
+                                                              '--reload' tracks modifications of sources and reloads them in run-time
+                                                              uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
     - open browser and go to "http://127.0.0.1:8000/"
     - at "http://127.0.0.1:8000/docs" you can see Swagger documentation
 
@@ -40,3 +56,118 @@
 
 8. Implement all the rest of GEDCOM 5.5.1 (families, events, media - see schema.sql)
 
+
+
+FRONTEND
+================================================================================
+0. To start development
+    - cd ./frontend
+    - npm install  ( !!! one time only - to download and install all dependencies, including executables)
+    - npm run dev
+
+1. Modern frontend development doesn't work by just opening HTML files in a browser.
+   You need a development server (http://localhost:3000) because:
+    Module bundling — Your code is split across many files (App.tsx, main.tsx, components). Vite bundles them together.
+    TypeScript compilation — Browsers don't understand TypeScript; it must be compiled to JavaScript.
+    Hot Module Replacement (HMR) — When you change code, the browser updates instantly without a full page reload.
+    API proxying — Look at your
+        vite.config.ts line 11-15: requests to /api get forwarded to your backend at port 8000.
+
+2. Tailwind CSS:
+    Project uses Tailwind v4 with the Vite plugin:
+        vite.config.ts includes tailwindcss() plugin (line 7)
+        index.css has @import "tailwindcss"; (line 1)
+    Compilation happens automatically:
+    In development (npm run dev): Tailwind generates CSS on-the-fly as you use classes
+    In production (npm run build): Vite builds optimized CSS with only the classes you actually use
+    You just write Tailwind classes like className="bg-blue-500 text-white p-4" and everything works.
+
+3. When you open http://localhost:3000 in Browser:
+    * index.html is not opened directly as a file
+      Instead Vite sends ./frontend/index.html through its development server
+    * The <script> tag in index.html loads /src/main.tsx, which Vite compiles on-the-fly
+    * React renders your entire app into the <div id="root"></div> element
+
+        Browser (localhost:3000)        Vite
+        GET /                           Serves frontend/index.html from disk
+        GET /src/main.tsx               Compiles TS/TSX → JS (and follows imports), serves result
+        GET /src/index.css              Processes CSS (including @import "tailwindcss") and Tailwind, serves result
+
+      The JS and CSS bodies are produced by Vite from your sources and kept in memory (and caches),
+      not written to the project folder.
+      Only when you run "npm run build" does Vite write real files
+      (e.g. under dist/: index.html, hashed .js and .css files) to disk.
+
+4. If you use "npm run build", Vite generates all possible *.tsx & *.css and dumps
+   them on disk (into ./frontend/dist folder) - so they become to be static and
+   do not require Vite functionality anymore.
+   You can use any WebServer, where document root is set to be ./frontend/dist:
+    * Vite’s preview: npm run preview (uses Vite only as a simple static server)
+    * nginx, Apache, Caddy pointing their document root at dist/
+    * Python: e.g. python -m http.server from inside dist/
+    * Node: e.g. npx serve dist
+
+5. package.json is created manually (in my case by Cursor :)), or by 'npm init'/'npm create vite@latest'.
+    * 'npm install': installs (downloads) dependencies, like Vite, into "node_modules" folder out of:
+                "devDependencies": {
+                    "@eslint/js": "^9.39.1",
+                    "@tailwindcss/vite": "^4.1.18",
+                    ...
+
+    * 'npm run dev': fetch script name for "dev" out of :scripts" section and run it:
+                "scripts": {
+                    "dev": "vite",
+                    "build": "tsc -b && vite build",
+                    "lint": "eslint .",
+                    "preview": "vite preview"
+                },
+      The script should be available in "node_modules" folder after installation by 'npm install'
+
+    * npm install <package-name>: to install new Runtime dependency (for the app when it runs).
+                                  goes into 'dependencies' part of package.json
+    * npm install <package-name> --save-dev: to install Dev-only dependency (build, lint, tests, etc.)
+                                  goes into 'devDependencies' part of package.json
+        Example:
+        dependencies (needed to run the app):
+            react, react-dom — the app uses them in the browser.
+            axios — the app uses it to call the API.
+            react-router-dom — the app uses it for routing.
+        devDependencies (only for you while developing/building):
+            vite — runs npm run dev and npm run build; the built files don’t “contain” Vite.
+            typescript — compiles .ts/.tsx; the browser gets plain JS, not the TypeScript compiler.
+            eslint — runs npm run lint; it’s a checker, not part of the app.
+            tailwindcss — used at build time to generate CSS; the final app only has the generated CSS.
+
+1.
+frontend/
+├── src/
+│   ├── api/         # API client and endpoints
+│   ├── components/  # Reusable UI components
+│   ├── contexts/    # React contexts (Auth)
+│   ├── pages/       # Page components
+│   ├── types/       # TypeScript types
+│   └── App.tsx      # Main app with routing
+├── vite.config.ts   # Vite configuration
+└── index.html       # Entry point
+
+
+
+
+HOW-TO
+================================================================================
+1.
+Backend (UviCorn + FastAPI + SqlAlchemy):
+    1. .\venv-win\Scripts\Activate.ps1
+    2. uvicorn backend.main:app --host 0.0.0.0 --port 8000
+       OR
+       uvicorn backend.main:app --reload
+    3. http://localhost:8000 in Browser
+
+Frontend (Vite + React + TailWind):
+    1. cd frontend
+    2. npm run dev
+    3. http://localhost:3000 in Browser
+
+2.
+Use separate databases for different users:
+change DEFAULT_USERNAME in backend/api/auth.py
