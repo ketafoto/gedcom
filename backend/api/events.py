@@ -9,7 +9,7 @@ import database.db
 
 router = APIRouter(prefix="/events", tags=["events"])
 
-@router.post("/", response_model=schemas.Event)
+@router.post("", response_model=schemas.Event)
 def create_event(
     event: schemas.EventCreate,
     db: Session = Depends(database.db.get_db)
@@ -28,7 +28,7 @@ def create_event(
     db.refresh(db_event)
     return db_event
 
-@router.get("/", response_model=List[schemas.Event])
+@router.get("", response_model=List[schemas.Event])
 def read_events(
     skip: int = 0,
     limit: int = 100,

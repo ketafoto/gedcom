@@ -97,7 +97,7 @@ class Event(Base):
     id = Column(Integer, primary_key=True, index=True)
     individual_id = Column(Integer, ForeignKey("main_individuals.id"), nullable=True)
     family_id = Column(Integer, ForeignKey("main_families.id"), nullable=True)
-    event_type_code = Column(String, nullable=False)  # References types_event(code)
+    event_type_code = Column(String, nullable=False)  # References lookup_event_types(code)
     event_date = Column(Date, nullable=True)
     event_date_approx = Column(String, nullable=True)  # Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
     event_place = Column(String, nullable=True)
@@ -114,7 +114,7 @@ class Media(Base):
     individual_id = Column(Integer, ForeignKey("main_individuals.id"), nullable=True)
     family_id = Column(Integer, ForeignKey("main_families.id"), nullable=True)
     file_path = Column(String, nullable=True)
-    media_type_code = Column(String, nullable=True)  # References types_media(code)
+    media_type_code = Column(String, nullable=True)  # References lookup_media_types(code)
     media_date = Column(Date, nullable=True)
     media_date_approx = Column(String, nullable=True)  # Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
     description = Column(Text, nullable=True)

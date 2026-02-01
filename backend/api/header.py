@@ -76,7 +76,7 @@ def get_or_create_header(db: Session) -> database.models.Header:
     return header
 
 
-@router.get("/", response_model=schemas.Header)
+@router.get("", response_model=schemas.Header)
 def get_header(db: Session = Depends(database.db.get_db)):
     """Get GEDCOM header and submitter information.
 
@@ -86,7 +86,7 @@ def get_header(db: Session = Depends(database.db.get_db)):
     return get_or_create_header(db)
 
 
-@router.put("/", response_model=schemas.Header)
+@router.put("", response_model=schemas.Header)
 def update_header(
     header_update: schemas.HeaderUpdate,
     db: Session = Depends(database.db.get_db)

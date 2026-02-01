@@ -70,7 +70,8 @@ app = FastAPI(
     title="Genealogy Database API",
     description="REST API for managing genealogical data in GEDCOM 5.5.1 format",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    redirect_slashes=False  # Avoid 307 redirects for trailing slash mismatches
 )
 
 # CORS middleware for frontend

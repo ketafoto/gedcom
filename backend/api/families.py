@@ -10,7 +10,7 @@ from .api_utils import generate_gedcom_id, generate_family_note
 
 router = APIRouter(prefix="/families", tags=["families"])
 
-@router.post("/", response_model=schemas.Family)
+@router.post("", response_model=schemas.Family)
 def create_family(
     family: schemas.FamilyCreate,
     db: Session = Depends(database.db.get_db)
@@ -65,7 +65,7 @@ def create_family(
 
     return db_family
 
-@router.get("/", response_model=List[schemas.Family])
+@router.get("", response_model=List[schemas.Family])
 def read_families(
     skip: int = 0,
     limit: int = 100,

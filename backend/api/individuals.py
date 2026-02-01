@@ -15,7 +15,7 @@ import database.db
 
 router = APIRouter(prefix="/individuals", tags=["individuals"])
 
-@router.post("/", response_model=schemas.Individual)
+@router.post("", response_model=schemas.Individual)
 def create_individual(
     individual: schemas.IndividualCreate,
     db: Session = Depends(database.db.get_db)
@@ -62,7 +62,7 @@ def create_individual(
 
     return db_individual
 
-@router.get("/", response_model=List[schemas.Individual])
+@router.get("", response_model=List[schemas.Individual])
 def read_individuals(
     skip: int = 0,
     limit: int = 100,

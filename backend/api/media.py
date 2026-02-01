@@ -9,7 +9,7 @@ import database.db
 
 router = APIRouter(prefix="/media", tags=["media"])
 
-@router.post("/", response_model=schemas.Media)
+@router.post("", response_model=schemas.Media)
 def create_media(
     media: schemas.MediaCreate,
     db: Session = Depends(database.db.get_db)
@@ -28,7 +28,7 @@ def create_media(
     db.refresh(db_media)
     return db_media
 
-@router.get("/", response_model=List[schemas.Media])
+@router.get("", response_model=List[schemas.Media])
 def read_media(
     skip: int = 0,
     limit: int = 100,

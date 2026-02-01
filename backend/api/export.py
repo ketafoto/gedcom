@@ -34,7 +34,7 @@ def export_gedcom_endpoint():
     user_info = db.get_current_user()
     if not user_info:
         # Initialize for this user
-        user_info = UserInfo(username=user.username)
+        user_info = UserInfo(username=user["username"])
         db.init_db_once(user_info)
     
     # Create temporary directory for export
@@ -42,7 +42,7 @@ def export_gedcom_endpoint():
         temp_path = Path(temp_dir)
         
         # Generate GEDCOM file
-        gedcom_filename = f"{user.username}_export.ged"
+        gedcom_filename = f"{user['username']}_export.ged"
         gedcom_path = temp_path / gedcom_filename
         
         try:
@@ -54,7 +54,7 @@ def export_gedcom_endpoint():
         
         # Create ZIP archive
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        zip_filename = f"{user.username}_export_{timestamp}.zip"
+        zip_filename = f"{user['username']}_export_{timestamp}.zip"
         zip_path = temp_path / zip_filename
         
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:

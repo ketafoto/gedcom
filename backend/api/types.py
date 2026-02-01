@@ -69,7 +69,7 @@ def get_family_roles():
     
     with engine.connect() as conn:
         result = conn.execute(
-            text("SELECT code, description FROM lookup_family_member_roles ORDER BY code")
+            text("SELECT code, description FROM lookup_family_roles ORDER BY code")
         )
         rows = result.fetchall()
     

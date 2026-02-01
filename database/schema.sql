@@ -1,24 +1,24 @@
 -- run "sqlite3 gedcom.db < schema.sql" to generate file with SQLite database
 
 -- Lookup table for sexes
-CREATE TABLE IF NOT EXISTS types_sex (
+CREATE TABLE IF NOT EXISTS lookup_sexes (
   code TEXT PRIMARY KEY,
   description TEXT NOT NULL
 );
 
-INSERT OR IGNORE INTO types_sex (code, description) VALUES
+INSERT OR IGNORE INTO lookup_sexes (code, description) VALUES
   ('M', 'Male'),
   ('F', 'Female'),
   ('NB', 'Non-binary'),
   ('U', 'Unknown');
 
 -- Lookup table for event types
-CREATE TABLE IF NOT EXISTS types_event (
+CREATE TABLE IF NOT EXISTS lookup_event_types (
   code TEXT PRIMARY KEY,
   description TEXT NOT NULL
 );
 
-INSERT OR IGNORE INTO types_event (code, description) VALUES
+INSERT OR IGNORE INTO lookup_event_types (code, description) VALUES
   ('BIRT', 'Birth'),
   ('DEAT', 'Death'),
   ('MARR', 'Marriage'),
@@ -34,23 +34,23 @@ INSERT OR IGNORE INTO types_event (code, description) VALUES
   ('RELOC', 'Relocation To');
 
 -- Lookup table for media types
-CREATE TABLE IF NOT EXISTS types_media (
+CREATE TABLE IF NOT EXISTS lookup_media_types (
   code TEXT PRIMARY KEY,
   description TEXT NOT NULL
 );
 
-INSERT OR IGNORE INTO types_media (code, description) VALUES
+INSERT OR IGNORE INTO lookup_media_types (code, description) VALUES
   ('photo', 'Photograph'),
   ('audio', 'Audio'),
   ('video', 'Video');
 
 -- Lookup table for family member roles
-CREATE TABLE IF NOT EXISTS types_family_member_roles (
+CREATE TABLE IF NOT EXISTS lookup_family_roles (
   code TEXT PRIMARY KEY,
   description TEXT NOT NULL
 );
 
-INSERT OR IGNORE INTO types_family_member_roles (code, description) VALUES
+INSERT OR IGNORE INTO lookup_family_roles (code, description) VALUES
   ('husband', 'Husband'),
   ('wife', 'Wife'),
   ('partner', 'Unmarried Partner');
@@ -59,7 +59,7 @@ INSERT OR IGNORE INTO types_family_member_roles (code, description) VALUES
 CREATE TABLE IF NOT EXISTS main_individuals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   gedcom_id TEXT UNIQUE,
-  sex_code TEXT REFERENCES types_sex(code),
+  sex_code TEXT REFERENCES lookup_sexes(code),
   birth_date TEXT,
   birth_date_approx TEXT,   -- Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
   birth_place TEXT,
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS main_families (
 CREATE TABLE IF NOT EXISTS main_family_members (
   family_id INTEGER REFERENCES main_families(id),
   individual_id INTEGER REFERENCES main_individuals(id),
-  role TEXT REFERENCES types_family_member_roles(code),
+  role TEXT REFERENCES lookup_family_roles(code),
   PRIMARY KEY(family_id, individual_id)
 );
 
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS main_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   individual_id INTEGER REFERENCES main_individuals(id),
   family_id INTEGER REFERENCES main_families(id),
-  event_type_code TEXT REFERENCES types_event(code),
+  event_type_code TEXT REFERENCES lookup_event_types(code),
   event_date TEXT,
   event_date_approx TEXT,     -- Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
   event_place TEXT,
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS main_media (
   individual_id INTEGER REFERENCES main_individuals(id),
   family_id INTEGER REFERENCES main_families(id),
   file_path TEXT,
-  media_type_code TEXT REFERENCES types_media(code),
+  media_type_code TEXT REFERENCES lookup_media_types(code),
   media_date TEXT,
   media_date_approx TEXT,     -- Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
   description TEXT
