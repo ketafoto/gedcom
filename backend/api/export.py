@@ -78,3 +78,45 @@ def export_gedcom_endpoint():
         media_type='application/zip',
         background=None  # Delete after sending would require background task
     )
+
+
+@router.post("/gedcom-raw")
+def export_gedcom_raw_endpoint():
+    """
+    Export the user's database to a raw GEDCOM file (no media, no ZIP).
+    """
+    user = get_current_user()
+
+    # Get user's database info
+    user_info = db.get_current_user()
+    if not user_info:
+        # Initialize for this user
+        user_info = UserInfo(username=user["username"])
+        db.init_db_once(user_info)
+
+    # Create temporary directory for export
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+
+        # Generate GEDCOM file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        gedcom_filename = f"{user['username']}_export_{timestamp}.ged"
+        gedcom_path = temp_path / gedcom_filename
+
+        try:
+            success = export_gedcom(user_info.db_file, gedcom_path)
+            if not success:
+                raise HTTPException(status_code=500, detail="Failed to generate GEDCOM")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to generate GEDCOM: {str(e)}")
+
+        # Copy GEDCOM to a more permanent temp location (will be cleaned up by system)
+        final_ged_path = Path(tempfile.gettempdir()) / gedcom_filename
+        shutil.copy2(gedcom_path, final_ged_path)
+
+    return FileResponse(
+        path=str(final_ged_path),
+        filename=gedcom_filename,
+        media_type='text/plain',
+        background=None  # Delete after sending would require background task
+    )
