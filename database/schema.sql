@@ -55,6 +55,18 @@ INSERT OR IGNORE INTO lookup_family_roles (code, description) VALUES
   ('wife', 'Wife'),
   ('partner', 'Unmarried Partner');
 
+-- Lookup table for name types
+CREATE TABLE IF NOT EXISTS lookup_name_types (
+  code TEXT PRIMARY KEY,
+  description TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO lookup_name_types (code, description) VALUES
+  ('birth', 'Birth'),
+  ('aka', 'Also Known As'),
+  ('married', 'Married'),
+  ('maiden', 'Maiden');
+
 -- Individuals table
 CREATE TABLE IF NOT EXISTS main_individuals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

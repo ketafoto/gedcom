@@ -33,5 +33,13 @@ export const typesApi = {
     const response = await apiClient.get<LookupType[]>('/types/family-roles');
     return response.data;
   },
+
+  /**
+   * Get individual name types for dropdown
+   */
+  getNameTypes: async (): Promise<LookupType[]> => {
+    const response = await apiClient.get<LookupType[]>('/types/name-types');
+    return response.data;
+  },
 };
 

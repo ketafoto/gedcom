@@ -48,6 +48,12 @@ export function IndividualFormPage() {
     queryFn: typesApi.getSexTypes,
   });
 
+  // Fetch name types for dropdown
+  const { data: nameTypes } = useQuery({
+    queryKey: ['types', 'name-types'],
+    queryFn: typesApi.getNameTypes,
+  });
+
   // Fetch existing individual if editing
   const { data: individual, isLoading: loadingIndividual } = useQuery({
     queryKey: ['individuals', id],
@@ -194,6 +200,20 @@ export function IndividualFormPage() {
                     {...register(`names.${index}.family_name`)}
                     error={errors.names?.[index]?.family_name?.message}
                   />
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">Name Type</label>
+                    <select
+                      {...register(`names.${index}.name_type`)}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    >
+                      <option value="">Select...</option>
+                      {nameTypes?.map((type) => (
+                        <option key={type.code} value={type.code}>
+                          {type.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <Input
                     label="Prefix (e.g., Dr.)"
                     {...register(`names.${index}.prefix`)}

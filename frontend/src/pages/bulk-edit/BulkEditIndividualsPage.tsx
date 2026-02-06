@@ -9,6 +9,7 @@ import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
 import type { Individual } from '../../types/models';
+import { getLatestName, formatIndividualName } from '../../utils/nameUtils';
 
 export function BulkEditIndividualsPage() {
   const navigate = useNavigate();
@@ -59,10 +60,8 @@ export function BulkEditIndividualsPage() {
 
     const query = searchQuery.toLowerCase();
     return individuals.filter((ind) => {
-      const name = ind.names[0];
-      const fullName = name
-        ? `${name.given_name || ''} ${name.family_name || ''}`.toLowerCase()
-        : '';
+      const name = getLatestName(ind.names);
+      const fullName = formatIndividualName(name, '').toLowerCase();
       return (
         fullName.includes(query) ||
         ind.gedcom_id?.toLowerCase().includes(query) ||
@@ -210,7 +209,7 @@ export function BulkEditIndividualsPage() {
               <tbody className="divide-y divide-gray-100">
                 {filteredIndividuals.map((individual) => {
                   const isEditing = editingId === individual.id;
-                  const name = individual.names[0];
+                  const name = getLatestName(individual.names);
 
                   return (
                     <tr

@@ -8,6 +8,7 @@ import { mediaApi } from '../../api/media';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Spinner } from '../../components/common/Spinner';
+import { formatIndividualName, getLatestName } from '../../utils/nameUtils';
 
 interface StatCardProps {
   title: string;
@@ -162,10 +163,8 @@ export function DashboardPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {recentIndividuals.map((individual) => {
-              const primaryName = individual.names[0];
-              const displayName = primaryName
-                ? `${primaryName.given_name || ''} ${primaryName.family_name || ''}`.trim() || 'Unnamed'
-                : 'Unnamed';
+              const latestName = getLatestName(individual.names);
+              const displayName = formatIndividualName(latestName);
 
               return (
                 <Link

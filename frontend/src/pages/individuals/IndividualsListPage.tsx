@@ -7,6 +7,7 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
+import { formatIndividualName, getLatestName } from '../../utils/nameUtils';
 
 export function IndividualsListPage() {
   const navigate = useNavigate();
@@ -50,10 +51,8 @@ export function IndividualsListPage() {
   const filteredIndividuals = (individuals || []).filter((individual) => {
     if (!searchQuery) return true;
     const searchLower = searchQuery.toLowerCase();
-    const primaryName = individual.names[0];
-    const fullName = primaryName
-      ? `${primaryName.given_name || ''} ${primaryName.family_name || ''}`.toLowerCase()
-      : '';
+    const latestName = getLatestName(individual.names);
+    const fullName = formatIndividualName(latestName, '').toLowerCase();
     return (
       fullName.includes(searchLower) ||
       individual.gedcom_id?.toLowerCase().includes(searchLower) ||
@@ -63,10 +62,8 @@ export function IndividualsListPage() {
 
   // Sort filtered list
   const getSortValue = (ind: (typeof filteredIndividuals)[0], key: SortKey): string => {
-    const primaryName = ind.names[0];
-    const displayName = primaryName
-      ? `${primaryName.given_name || ''} ${primaryName.family_name || ''}`.trim()
-      : '';
+    const latestName = getLatestName(ind.names);
+    const displayName = formatIndividualName(latestName, '');
     switch (key) {
       case 'name':
         return displayName.toLowerCase();
@@ -209,10 +206,8 @@ export function IndividualsListPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {sortedIndividuals.map((individual) => {
-                  const primaryName = individual.names[0];
-                  const displayName = primaryName
-                    ? `${primaryName.given_name || ''} ${primaryName.family_name || ''}`.trim() || 'Unnamed'
-                    : 'Unnamed';
+                  const latestName = getLatestName(individual.names);
+                  const displayName = formatIndividualName(latestName);
 
                   return (
                     <tr

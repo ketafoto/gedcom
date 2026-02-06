@@ -75,3 +75,38 @@ def get_family_roles():
     
     return [LookupType(code=row[0], description=row[1]) for row in rows]
 
+
+@router.get("/name-types", response_model=List[LookupType])
+def get_name_types():
+    """Get all name types for dropdowns."""
+    engine = db.init_db_once()
+
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS lookup_name_types (
+                  code TEXT PRIMARY KEY,
+                  description TEXT NOT NULL
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                INSERT OR IGNORE INTO lookup_name_types (code, description) VALUES
+                  ('birth', 'Birth'),
+                  ('aka', 'Also Known As'),
+                  ('married', 'Married'),
+                  ('maiden', 'Maiden')
+                """
+            )
+        )
+        result = conn.execute(
+            text("SELECT code, description FROM lookup_name_types ORDER BY code")
+        )
+        rows = result.fetchall()
+
+    return [LookupType(code=row[0], description=row[1]) for row in rows]
+
