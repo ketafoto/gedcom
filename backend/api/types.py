@@ -110,3 +110,41 @@ def get_name_types():
 
     return [LookupType(code=row[0], description=row[1]) for row in rows]
 
+
+@router.get("/date-approx", response_model=List[LookupType])
+def get_date_approx_types():
+    """Get all approximate date types for dropdowns."""
+    engine = db.init_db_once()
+
+    with engine.connect() as conn:
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS lookup_date_approx_types (
+                  code TEXT PRIMARY KEY,
+                  description TEXT NOT NULL
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                INSERT OR IGNORE INTO lookup_date_approx_types (code, description) VALUES
+                  ('ABT', 'About'),
+                  ('CAL', 'Calculated'),
+                  ('EST', 'Estimated'),
+                  ('BEF', 'Before'),
+                  ('AFT', 'After'),
+                  ('BET', 'Between X And Y'),
+                  ('FROM', 'From X To Y')
+                """
+            )
+        )
+        result = conn.execute(
+            text("SELECT code, description FROM lookup_date_approx_types ORDER BY code")
+        )
+        rows = result.fetchall()
+
+    return [LookupType(code=row[0], description=row[1]) for row in rows]
+

@@ -41,5 +41,13 @@ export const typesApi = {
     const response = await apiClient.get<LookupType[]>('/types/name-types');
     return response.data;
   },
+
+  /**
+   * Get approximate date types for dropdown
+   */
+  getDateApproxTypes: async (): Promise<LookupType[]> => {
+    const response = await apiClient.get<LookupType[]>('/types/date-approx');
+    return response.data;
+  },
 };
 

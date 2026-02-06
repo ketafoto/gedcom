@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
@@ -11,6 +11,7 @@ import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
+import { ApproxDateInput } from '../../components/common/ApproxDateInput';
 import toast from 'react-hot-toast';
 
 const nameSchema = z.object({
@@ -52,6 +53,12 @@ export function IndividualFormPage() {
   const { data: nameTypes } = useQuery({
     queryKey: ['types', 'name-types'],
     queryFn: typesApi.getNameTypes,
+  });
+
+  // Fetch approximate date types for dropdown
+  const { data: approxDateTypes } = useQuery({
+    queryKey: ['types', 'date-approx'],
+    queryFn: typesApi.getDateApproxTypes,
   });
 
   // Fetch existing individual if editing
@@ -272,10 +279,17 @@ export function IndividualFormPage() {
               type="date"
               {...register('birth_date')}
             />
-            <Input
-              label="Approximate Date"
-              {...register('birth_date_approx')}
-              helperText="e.g., ABT 1850, BEF 1900"
+            <Controller
+              control={control}
+              name="birth_date_approx"
+              render={({ field }) => (
+                <ApproxDateInput
+                  label="Approximate Date"
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={approxDateTypes}
+                />
+              )}
             />
             <div className="md:col-span-2">
               <Input
@@ -294,10 +308,17 @@ export function IndividualFormPage() {
               type="date"
               {...register('death_date')}
             />
-            <Input
-              label="Approximate Date"
-              {...register('death_date_approx')}
-              helperText="e.g., ABT 1920, AFT 1910"
+            <Controller
+              control={control}
+              name="death_date_approx"
+              render={({ field }) => (
+                <ApproxDateInput
+                  label="Approximate Date"
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={approxDateTypes}
+                />
+              )}
             />
             <div className="md:col-span-2">
               <Input

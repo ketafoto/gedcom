@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -5,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { typesApi } from './api/types';
 
 // Main pages
 import { DashboardPage } from './pages/dashboard/DashboardPage';
@@ -29,9 +31,46 @@ const queryClient = new QueryClient({
   },
 });
 
+queryClient.setQueryDefaults(['types'], {
+  staleTime: Infinity,
+  gcTime: 24 * 60 * 60 * 1000, // 24 hours
+});
+
+function PrefetchTypes() {
+  useEffect(() => {
+    void queryClient.prefetchQuery({
+      queryKey: ['types', 'sex'],
+      queryFn: typesApi.getSexTypes,
+    });
+    void queryClient.prefetchQuery({
+      queryKey: ['types', 'events'],
+      queryFn: typesApi.getEventTypes,
+    });
+    void queryClient.prefetchQuery({
+      queryKey: ['types', 'media'],
+      queryFn: typesApi.getMediaTypes,
+    });
+    void queryClient.prefetchQuery({
+      queryKey: ['types', 'family-roles'],
+      queryFn: typesApi.getFamilyRoles,
+    });
+    void queryClient.prefetchQuery({
+      queryKey: ['types', 'name-types'],
+      queryFn: typesApi.getNameTypes,
+    });
+    void queryClient.prefetchQuery({
+      queryKey: ['types', 'date-approx'],
+      queryFn: typesApi.getDateApproxTypes,
+    });
+  }, []);
+
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <PrefetchTypes />
       <BrowserRouter>
         <AuthProvider>
           <Routes>

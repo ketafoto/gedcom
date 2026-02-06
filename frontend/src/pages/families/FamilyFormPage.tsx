@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { familiesApi } from '../../api/families';
 import { individualsApi } from '../../api/individuals';
@@ -10,6 +10,7 @@ import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
+import { ApproxDateInput } from '../../components/common/ApproxDateInput';
 import toast from 'react-hot-toast';
 
 // Form data type - using simple types for form fields
@@ -53,6 +54,11 @@ export function FamilyFormPage() {
     queryKey: ['families', id],
     queryFn: () => familiesApi.get(Number(id)),
     enabled: isEditing,
+  });
+
+  const { data: approxDateTypes } = useQuery({
+    queryKey: ['types', 'date-approx'],
+    queryFn: typesApi.getDateApproxTypes,
   });
 
   const {
@@ -320,10 +326,17 @@ export function FamilyFormPage() {
               type="date"
               {...register('marriage_date')}
             />
-            <Input
-              label="Approximate Date"
-              {...register('marriage_date_approx')}
-              helperText="e.g., ABT 1850, BEF 1900"
+            <Controller
+              control={control}
+              name="marriage_date_approx"
+              render={({ field }) => (
+                <ApproxDateInput
+                  label="Approximate Date"
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={approxDateTypes}
+                />
+              )}
             />
             <div className="md:col-span-2">
               <Input
@@ -342,9 +355,17 @@ export function FamilyFormPage() {
               type="date"
               {...register('divorce_date')}
             />
-            <Input
-              label="Approximate Date"
-              {...register('divorce_date_approx')}
+            <Controller
+              control={control}
+              name="divorce_date_approx"
+              render={({ field }) => (
+                <ApproxDateInput
+                  label="Approximate Date"
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={approxDateTypes}
+                />
+              )}
             />
           </div>
         </Card>

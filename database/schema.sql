@@ -67,6 +67,21 @@ INSERT OR IGNORE INTO lookup_name_types (code, description) VALUES
   ('married', 'Married'),
   ('maiden', 'Maiden');
 
+-- Lookup table for approximate date types
+CREATE TABLE IF NOT EXISTS lookup_date_approx_types (
+  code TEXT PRIMARY KEY,
+  description TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO lookup_date_approx_types (code, description) VALUES
+  ('ABT', 'About'),
+  ('CAL', 'Calculated'),
+  ('EST', 'Estimated'),
+  ('BEF', 'Before'),
+  ('AFT', 'After'),
+  ('BET', 'Between X And Y'),
+  ('FROM', 'From X To Y');
+
 -- Individuals table
 CREATE TABLE IF NOT EXISTS main_individuals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
