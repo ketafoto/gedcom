@@ -10,7 +10,7 @@ class TestIndividualsCRUD:
     def test_crud_individuals_workflow(self, client, db_utils, individual_verifier, sample_individual_data, log_test_step):
 
         log_test_step("Creating first individual with auto-generated GEDCOM ID")
-        response = client.post("/individuals/", json=sample_individual_data)
+        response = client.post("/individuals", json=sample_individual_data)
         assert response.status_code == 200, f"Failed to create individual: {response.json()}"
         data = response.json()
         assert "gedcom_id" in data
@@ -52,7 +52,7 @@ class TestIndividualsCRUD:
                 }
             ]
         }
-        response = client.post("/individuals/", json=sample_individual_data_2)
+        response = client.post("/individuals", json=sample_individual_data_2)
         assert response.status_code == 200, f"Failed to create second individual: {response.json()}"
         data = response.json()
 
@@ -60,7 +60,7 @@ class TestIndividualsCRUD:
         auto_gedcom_id_2 = data["gedcom_id"]
 
         log_test_step("Creating third individual with explicit GEDCOM ID")
-        response = client.post("/individuals/", json={
+        response = client.post("/individuals", json={
             "gedcom_id": "I999",
             "sex_code": "M",
             "birth_date": "1975-03-10",
@@ -81,7 +81,7 @@ class TestIndividualsCRUD:
         assert data["gedcom_id"] == "I999"
 
         log_test_step("Testing duplicate GEDCOM ID rejection")
-        response = client.post("/individuals/", json={
+        response = client.post("/individuals", json={
             "gedcom_id": "I999",
             "sex_code": "F",
             "birth_date": "1990-01-01",
@@ -104,7 +104,7 @@ class TestIndividualsCRUD:
         assert len(individuals) == 1, f"Expected 1 individual with GEDCOM ID I999, found {len(individuals)}"
 
         log_test_step("Fetching list of all individuals")
-        response = client.get("/individuals/")
+        response = client.get("/individuals")
         assert response.status_code == 200
         data = response.json()
         assert len(data) >= 3, "Should have at least 3 individuals"
@@ -117,7 +117,7 @@ class TestIndividualsCRUD:
         assert len(all_individuals) >= 3, f"Expected at least 3 individuals in DB, got {len(all_individuals)}"
 
         log_test_step("Testing pagination (skip=1, limit=2)")
-        response = client.get("/individuals/?skip=1&limit=2")
+        response = client.get("/individuals?skip=1&limit=2")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 2, f"Expected exactly 2 individuals with skip=1&limit=2, got {len(data)}"
@@ -215,7 +215,7 @@ class TestIndividualsCRUD:
                 {"given_name": "Anya", "family_name": "S."},
             ]
         }
-        response = client.post("/individuals/", json=create_data)
+        response = client.post("/individuals", json=create_data)
         assert response.status_code == 200
         ind = response.json()
         assert len(ind["names"]) == 2
@@ -254,7 +254,7 @@ class TestFamiliesCRUD:
             "birth_place": "Moscow, USSR",
             "names": [{"given_name": "Ivan", "family_name": "Petrov"}]
         }
-        response = client.post("/individuals/", json=ind1_data)
+        response = client.post("/individuals", json=ind1_data)
         assert response.status_code == 200
         ind1_id = response.json()["id"]
         log_test_step(f"Individual 1 (father) created with id={ind1_id}")
@@ -266,7 +266,7 @@ class TestFamiliesCRUD:
             "birth_place": "Saint Petersburg, USSR",
             "names": [{"given_name": "Maria", "family_name": "Petrova"}]
         }
-        response = client.post("/individuals/", json=ind2_data)
+        response = client.post("/individuals", json=ind2_data)
         assert response.status_code == 200
         ind2_id = response.json()["id"]
         log_test_step(f"Individual 2 (mother) created with id={ind2_id}")
@@ -278,7 +278,7 @@ class TestFamiliesCRUD:
             "birth_place": "Moscow, Russia",
             "names": [{"given_name": "Alexei", "family_name": "Petrov"}]
         }
-        response = client.post("/individuals/", json=ind3_data)
+        response = client.post("/individuals", json=ind3_data)
         assert response.status_code == 200
         ind3_id = response.json()["id"]
         log_test_step(f"Individual 3 (child 1) created with id={ind3_id}")
@@ -290,7 +290,7 @@ class TestFamiliesCRUD:
             "birth_place": "Moscow, Russia",
             "names": [{"given_name": "Natasha", "family_name": "Petrova"}]
         }
-        response = client.post("/individuals/", json=ind4_data)
+        response = client.post("/individuals", json=ind4_data)
         assert response.status_code == 200
         ind4_id = response.json()["id"]
         log_test_step(f"Individual 4 (child 2) created with id={ind4_id}")
@@ -310,7 +310,7 @@ class TestFamiliesCRUD:
                 {"child_id": ind4_id}
             ]
         }
-        response = client.post("/families/", json=family_data)
+        response = client.post("/families", json=family_data)
         assert response.status_code == 200
         family = response.json()
         family_id = family["id"]
@@ -377,7 +377,7 @@ class TestFamiliesCRUD:
             "birth_place": "Moscow, Russia",
             "names": [{"given_name": "Dmitri", "family_name": "Petrov"}]
         }
-        response = client.post("/individuals/", json=ind5_data)
+        response = client.post("/individuals", json=ind5_data)
         assert response.status_code == 200
         ind5_id = response.json()["id"]
         log_test_step(f"Individual 5 (new child) created with id={ind5_id}")
@@ -566,7 +566,7 @@ class TestEventsCRUD:
             "birth_place": "Moscow, USSR",
             "names": [{"given_name": "Boris", "family_name": "Ivanov"}]
         }
-        response = client.post("/individuals/", json=ind_data)
+        response = client.post("/individuals", json=ind_data)
         assert response.status_code == 200
         ind_id = response.json()["id"]
         log_test_step(f"Individual created with id={ind_id}")
@@ -578,7 +578,7 @@ class TestEventsCRUD:
             "event_date": "1975-03-10",
             "event_place": "Moscow, USSR"
         }
-        response = client.post("/events/", json=event_data)
+        response = client.post("/events", json=event_data)
         assert response.status_code == 200
         event1 = response.json()
         event1_id = event1["id"]
@@ -592,7 +592,7 @@ class TestEventsCRUD:
             "event_place": "Church of Christ, Moscow",
             "description": "Baptism ceremony"
         }
-        response = client.post("/events/", json=event_data_2)
+        response = client.post("/events", json=event_data_2)
         assert response.status_code == 200
         event2 = response.json()
         event2_id = event2["id"]
@@ -606,13 +606,13 @@ class TestEventsCRUD:
         assert fetched_event["individual_id"] == ind_id
 
         log_test_step(f"Fetching events for individual id={ind_id}")
-        response = client.get(f"/events/?individual_id={ind_id}")
+        response = client.get(f"/events?individual_id={ind_id}")
         assert response.status_code == 200
         events_list = response.json()
         assert len(events_list) >= 2
 
         log_test_step("Listing all events")
-        response = client.get("/events/")
+        response = client.get("/events")
         assert response.status_code == 200
         all_events = response.json()
         assert len(all_events) >= 2
@@ -663,7 +663,7 @@ class TestEventsCRUD:
             "birth_date": "1980-05-15",
             "names": [{"given_name": "Peter", "family_name": "Smith"}]
         }
-        response = client.post("/individuals/", json=ind1_data)
+        response = client.post("/individuals", json=ind1_data)
         assert response.status_code == 200
         ind1_id = response.json()["id"]
 
@@ -672,7 +672,7 @@ class TestEventsCRUD:
             "birth_date": "1982-08-20",
             "names": [{"given_name": "Mary", "family_name": "Jones"}]
         }
-        response = client.post("/individuals/", json=ind2_data)
+        response = client.post("/individuals", json=ind2_data)
         assert response.status_code == 200
         ind2_id = response.json()["id"]
         log_test_step(f"Created individuals: husband={ind1_id}, wife={ind2_id}")
@@ -686,7 +686,7 @@ class TestEventsCRUD:
                 {"individual_id": ind2_id, "role": "wife"}
             ]
         }
-        response = client.post("/families/", json=family_data)
+        response = client.post("/families", json=family_data)
         assert response.status_code == 200
         family_id = response.json()["id"]
         log_test_step(f"Family created with id={family_id}")
@@ -699,7 +699,7 @@ class TestEventsCRUD:
             "event_place": "City Hall, Boston",
             "description": "Wedding ceremony"
         }
-        response = client.post("/events/", json=event_data)
+        response = client.post("/events", json=event_data)
         assert response.status_code == 200
         event = response.json()
         assert event["family_id"] == family_id
@@ -708,7 +708,7 @@ class TestEventsCRUD:
         log_test_step(f"Family event created with id={event_id}")
 
         log_test_step(f"Fetching events for family id={family_id}")
-        response = client.get(f"/events/?family_id={family_id}")
+        response = client.get(f"/events?family_id={family_id}")
         assert response.status_code == 200
         events_list = response.json()
         assert len(events_list) >= 1
@@ -721,11 +721,11 @@ class TestEventsCRUD:
             "event_type_code": "OCCU",
             "description": "Started new job"
         }
-        response = client.post("/events/", json=ind_event)
+        response = client.post("/events", json=ind_event)
         assert response.status_code == 200
 
         log_test_step("Verifying individual filter excludes family events")
-        response = client.get(f"/events/?individual_id={ind1_id}")
+        response = client.get(f"/events?individual_id={ind1_id}")
         assert response.status_code == 200
         ind_events = response.json()
         for e in ind_events:
@@ -742,7 +742,7 @@ class TestEventsCRUD:
             "birth_date": "1990-01-01",
             "names": [{"given_name": "Test", "family_name": "Person"}]
         }
-        response = client.post("/individuals/", json=ind_data)
+        response = client.post("/individuals", json=ind_data)
         assert response.status_code == 200
         ind_id = response.json()["id"]
 
@@ -764,7 +764,7 @@ class TestEventsCRUD:
                 "event_type_code": event_type,
                 "description": description
             }
-            response = client.post("/events/", json=event_data)
+            response = client.post("/events", json=event_data)
             assert response.status_code == 200, f"Failed to create {event_type} event"
             created_events.append(response.json())
 
@@ -772,7 +772,7 @@ class TestEventsCRUD:
         assert len(created_events) == len(event_types)
 
         log_test_step("Verifying all events for individual")
-        response = client.get(f"/events/?individual_id={ind_id}")
+        response = client.get(f"/events?individual_id={ind_id}")
         assert response.status_code == 200
         events = response.json()
         assert len(events) >= len(event_types)
@@ -788,7 +788,7 @@ class TestEventsCRUD:
             "birth_date": "1965-12-25",
             "names": [{"given_name": "Nick", "family_name": "Holiday"}]
         }
-        response = client.post("/individuals/", json=ind_data)
+        response = client.post("/individuals", json=ind_data)
         assert response.status_code == 200
         ind_id = response.json()["id"]
 
@@ -800,7 +800,7 @@ class TestEventsCRUD:
             "event_place": "North Pole",
             "description": "A special birthday"
         }
-        response = client.post("/events/", json=event_data)
+        response = client.post("/events", json=event_data)
         assert response.status_code == 200
         event_id = response.json()["id"]
 
@@ -850,7 +850,7 @@ class TestEventsCRUD:
             "sex_code": "M",
             "names": [{"given_name": "Page", "family_name": "Test"}]
         }
-        response = client.post("/individuals/", json=ind_data)
+        response = client.post("/individuals", json=ind_data)
         assert response.status_code == 200
         ind_id = response.json()["id"]
 
@@ -861,17 +861,17 @@ class TestEventsCRUD:
                 "event_type_code": "EVEN",
                 "description": f"Event number {i+1}"
             }
-            response = client.post("/events/", json=event_data)
+            response = client.post("/events", json=event_data)
             assert response.status_code == 200
 
         log_test_step("Testing skip=0, limit=2")
-        response = client.get("/events/?skip=0&limit=2")
+        response = client.get("/events?skip=0&limit=2")
         assert response.status_code == 200
         events = response.json()
         assert len(events) == 2
 
         log_test_step("Testing skip=2, limit=2")
-        response = client.get("/events/?skip=2&limit=2")
+        response = client.get("/events?skip=2&limit=2")
         assert response.status_code == 200
         events = response.json()
         assert len(events) == 2
@@ -891,7 +891,7 @@ class TestMediaCRUD:
             "birth_place": "Saint Petersburg, Russia",
             "names": [{"given_name": "Olga", "family_name": "Smirnova"}]
         }
-        response = client.post("/individuals/", json=ind_data)
+        response = client.post("/individuals", json=ind_data)
         assert response.status_code == 200
         ind_id = response.json()["id"]
         log_test_step(f"Individual created with id={ind_id}")
@@ -904,7 +904,7 @@ class TestMediaCRUD:
             "media_date": "1990-05-10",
             "description": "Black and white portrait"
         }
-        response = client.post("/media/", json=media_data)
+        response = client.post("/media", json=media_data)
         assert response.status_code == 200
         media1 = response.json()
         media1_id = media1["id"]
@@ -917,7 +917,7 @@ class TestMediaCRUD:
             "media_type_code": "photo",
             "description": "Wedding photo"
         }
-        response = client.post("/media/", json=media_data_2)
+        response = client.post("/media", json=media_data_2)
         assert response.status_code == 200
         media2 = response.json()
         media2_id = media2["id"]
@@ -931,13 +931,13 @@ class TestMediaCRUD:
         assert fetched_media["description"] == "Black and white portrait"
 
         log_test_step(f"Fetching media for individual id={ind_id}")
-        response = client.get(f"/media/?individual_id={ind_id}")
+        response = client.get(f"/media?individual_id={ind_id}")
         assert response.status_code == 200
         media_list = response.json()
         assert len(media_list) >= 2
 
         log_test_step("Listing all media records")
-        response = client.get("/media/")
+        response = client.get("/media")
         assert response.status_code == 200
         all_media = response.json()
         assert len(all_media) >= 2
@@ -988,7 +988,7 @@ class TestMediaCRUD:
             "birth_date": "1975-03-10",
             "names": [{"given_name": "John", "family_name": "Doe"}]
         }
-        response = client.post("/individuals/", json=ind1_data)
+        response = client.post("/individuals", json=ind1_data)
         assert response.status_code == 200
         ind1_id = response.json()["id"]
 
@@ -997,7 +997,7 @@ class TestMediaCRUD:
             "birth_date": "1978-11-25",
             "names": [{"given_name": "Jane", "family_name": "Doe"}]
         }
-        response = client.post("/individuals/", json=ind2_data)
+        response = client.post("/individuals", json=ind2_data)
         assert response.status_code == 200
         ind2_id = response.json()["id"]
 
@@ -1009,7 +1009,7 @@ class TestMediaCRUD:
                 {"individual_id": ind2_id, "role": "wife"}
             ]
         }
-        response = client.post("/families/", json=family_data)
+        response = client.post("/families", json=family_data)
         assert response.status_code == 200
         family_id = response.json()["id"]
         log_test_step(f"Family created with id={family_id}")
@@ -1022,7 +1022,7 @@ class TestMediaCRUD:
             "media_date": "2000-08-15",
             "description": "Wedding ceremony photo"
         }
-        response = client.post("/media/", json=media_data)
+        response = client.post("/media", json=media_data)
         assert response.status_code == 200
         media = response.json()
         assert media["family_id"] == family_id
@@ -1031,7 +1031,7 @@ class TestMediaCRUD:
         log_test_step(f"Family media created with id={media_id}")
 
         log_test_step(f"Fetching media for family id={family_id}")
-        response = client.get(f"/media/?family_id={family_id}")
+        response = client.get(f"/media?family_id={family_id}")
         assert response.status_code == 200
         media_list = response.json()
         assert len(media_list) >= 1
@@ -1048,7 +1048,7 @@ class TestMediaCRUD:
             "birth_date": "1950-01-01",
             "names": [{"given_name": "Media", "family_name": "Tester"}]
         }
-        response = client.post("/individuals/", json=ind_data)
+        response = client.post("/individuals", json=ind_data)
         assert response.status_code == 200
         ind_id = response.json()["id"]
 
@@ -1068,7 +1068,7 @@ class TestMediaCRUD:
                 "media_type_code": media_type,
                 "description": description
             }
-            response = client.post("/media/", json=media_data)
+            response = client.post("/media", json=media_data)
             assert response.status_code == 200, f"Failed to create {media_type} media"
             created_media.append(response.json())
 
@@ -1076,7 +1076,7 @@ class TestMediaCRUD:
         assert len(created_media) == len(media_types)
 
         log_test_step("Verifying all media for individual")
-        response = client.get(f"/media/?individual_id={ind_id}")
+        response = client.get(f"/media?individual_id={ind_id}")
         assert response.status_code == 200
         media_list = response.json()
         assert len(media_list) >= len(media_types)
@@ -1092,7 +1092,7 @@ class TestMediaCRUD:
             "birth_date": "1920-05-05",
             "names": [{"given_name": "Historic", "family_name": "Person"}]
         }
-        response = client.post("/individuals/", json=ind_data)
+        response = client.post("/individuals", json=ind_data)
         assert response.status_code == 200
         ind_id = response.json()["id"]
 
@@ -1104,7 +1104,7 @@ class TestMediaCRUD:
             "media_date": "1940-06-15",
             "description": "Vintage portrait from 1940"
         }
-        response = client.post("/media/", json=media_data)
+        response = client.post("/media", json=media_data)
         assert response.status_code == 200
         media_id = response.json()["id"]
 
@@ -1154,7 +1154,7 @@ class TestMediaCRUD:
             "sex_code": "F",
             "names": [{"given_name": "Photo", "family_name": "Album"}]
         }
-        response = client.post("/individuals/", json=ind_data)
+        response = client.post("/individuals", json=ind_data)
         assert response.status_code == 200
         ind_id = response.json()["id"]
 
@@ -1166,17 +1166,17 @@ class TestMediaCRUD:
                 "media_type_code": "photo",
                 "description": f"Photo number {i+1}"
             }
-            response = client.post("/media/", json=media_data)
+            response = client.post("/media", json=media_data)
             assert response.status_code == 200
 
         log_test_step("Testing skip=0, limit=2")
-        response = client.get("/media/?skip=0&limit=2")
+        response = client.get("/media?skip=0&limit=2")
         assert response.status_code == 200
         media_list = response.json()
         assert len(media_list) == 2
 
         log_test_step("Testing skip=2, limit=2")
-        response = client.get("/media/?skip=2&limit=2")
+        response = client.get("/media?skip=2&limit=2")
         assert response.status_code == 200
         media_list = response.json()
         assert len(media_list) == 2
@@ -1191,7 +1191,7 @@ class TestMediaCRUD:
             "sex_code": "M",
             "names": [{"given_name": "Update", "family_name": "Test"}]
         }
-        response = client.post("/individuals/", json=ind_data)
+        response = client.post("/individuals", json=ind_data)
         assert response.status_code == 200
         ind_id = response.json()["id"]
 
@@ -1203,7 +1203,7 @@ class TestMediaCRUD:
             "media_date": "2000-01-01",
             "description": "Original description"
         }
-        response = client.post("/media/", json=media_data)
+        response = client.post("/media", json=media_data)
         assert response.status_code == 200
         media_id = response.json()["id"]
 
@@ -1236,7 +1236,7 @@ class TestHeaderCRUD:
         """Test that GET /header/ creates a default header if none exists."""
 
         log_test_step("Fetching header (should create default if not exists)")
-        response = client.get("/header/")
+        response = client.get("/header")
         assert response.status_code == 200
         header = response.json()
 
@@ -1259,7 +1259,7 @@ class TestHeaderCRUD:
         """Test updating header fields."""
 
         log_test_step("Ensuring header exists")
-        response = client.get("/header/")
+        response = client.get("/header")
         assert response.status_code == 200
 
         log_test_step("Updating header with source system info")
@@ -1270,7 +1270,7 @@ class TestHeaderCRUD:
             "language": "English",
             "copyright": "Copyright 2025 Test User"
         }
-        response = client.put("/header/", json=update_data)
+        response = client.put("/header", json=update_data)
         assert response.status_code == 200
         updated = response.json()
 
@@ -1291,7 +1291,7 @@ class TestHeaderCRUD:
         """Test updating submitter information via dedicated endpoint."""
 
         log_test_step("Ensuring header exists")
-        response = client.get("/header/")
+        response = client.get("/header")
         assert response.status_code == 200
 
         log_test_step("Updating submitter contact details")
@@ -1360,7 +1360,7 @@ class TestHeaderCRUD:
         """Test that protected fields cannot be updated via API."""
 
         log_test_step("Ensuring header exists")
-        response = client.get("/header/")
+        response = client.get("/header")
         assert response.status_code == 200
         original = response.json()
         original_id = original["id"]
@@ -1372,7 +1372,7 @@ class TestHeaderCRUD:
             "creation_date": "01 JAN 2000",  # Should be ignored
             "submitter_name": "Valid Update"  # Should be accepted
         }
-        response = client.put("/header/", json=update_data)
+        response = client.put("/header", json=update_data)
         assert response.status_code == 200
         updated = response.json()
 
@@ -1391,12 +1391,12 @@ class TestHeaderCRUD:
             "submitter_email": "initial@example.com",
             "language": "English"
         }
-        response = client.put("/header/", json=initial_data)
+        response = client.put("/header", json=initial_data)
         assert response.status_code == 200
 
         log_test_step("Performing partial update (only language)")
         partial_update = {"language": "Russian"}
-        response = client.put("/header/", json=partial_update)
+        response = client.put("/header", json=partial_update)
         assert response.status_code == 200
         updated = response.json()
 
@@ -1411,11 +1411,11 @@ class TestHeaderCRUD:
         """Test that last_modified is updated on changes."""
 
         log_test_step("Ensuring header exists")
-        response = client.get("/header/")
+        response = client.get("/header")
         assert response.status_code == 200
 
         log_test_step("Updating header and checking last_modified")
-        response = client.put("/header/", json={"note": "Test update"})
+        response = client.put("/header", json={"note": "Test update"})
         assert response.status_code == 200
         updated = response.json()
 

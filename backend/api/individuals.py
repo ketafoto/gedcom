@@ -116,6 +116,18 @@ def update_individual(
 
     update_data = individual_update.model_dump(exclude_unset=True) # Pydantic V2
 
+    # Enforce mutual exclusivity for date fields:
+    # - If birth_date is set, clear birth_date_approx (and vice versa)
+    # - If death_date is set, clear death_date_approx (and vice versa)
+    if "birth_date" in update_data and update_data["birth_date"] is not None:
+        update_data["birth_date_approx"] = None
+    if "birth_date_approx" in update_data and update_data["birth_date_approx"] is not None:
+        update_data["birth_date"] = None
+    if "death_date" in update_data and update_data["death_date"] is not None:
+        update_data["death_date_approx"] = None
+    if "death_date_approx" in update_data and update_data["death_date_approx"] is not None:
+        update_data["death_date"] = None
+
     # Update Individual fields (excluding 'names' which is handled separately)
     for key, value in update_data.items():
         if key == "names":

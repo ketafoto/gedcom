@@ -8,6 +8,14 @@
 # - The test GEDCOM data is copied from users/inovoseltsev/data.ged
 # - All test data is cleaned up after successful test runs
 #
+# To invoke tests use:
+#   venv-win\Scripts\Activate.ps1;  python -m pytest
+#   venv-linux\bin\activate &&      python -m pytest
+#
+# To run specific test and debug it use:
+#   venv-win\Scripts\Activate.ps1;  python -m pytest tests/database/test_export_caveats.py -s -v --my-debug
+#   venv-linux\bin\activate &&      python -m pytest tests/database/test_export_caveats.py -s -v --my-debug
+#
 
 import shutil
 import pytest
@@ -86,7 +94,7 @@ def log_debug(request):
 
     def _log_debug(message: str):
         if request.config.getoption("--my-debug"):
-            print(f"🔍 DEBUG: {message}")
+            print(f"DEBUG: {message}")
 
     return _log_debug
 
@@ -95,6 +103,88 @@ def reset_logging():
     """Reset logging state between tests."""
     _test_state["header_printed"] = False
     yield
+
+
+def get_test_temp_dir(test_module_path: Path) -> Path:
+    """
+    Get the temp directory path for a test module. If not exists - create it.
+    Assuming the test is tests/<path>/test_foo.py,
+    the temp directory will be  tests/<path>/test_foo/temp/.
+
+    Args:
+        test_module_path: Path to the test module file
+
+    Returns:
+        Path to the temp directory (created if it doesn't exist)
+    """
+    module_name = test_module_path.stem  # e.g., "test_export_caveats"
+    temp_dir = test_module_path.parent / module_name / "temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    return temp_dir
+
+
+@pytest.fixture
+def test_temp_dir(request) -> Path:
+    """
+    Fixture providing a temp directory for test artifacts.
+
+    Usage:
+        def test_something(test_temp_dir):
+            db_file = test_temp_dir / "data.sqlite"
+            output_file = test_temp_dir / "output.txt"
+            ...
+
+    Pattern: tests/<path>/test_foo.py → tests/<path>/test_foo/temp/
+
+    Cleanup:
+        - Session start: all temp dirs are cleaned
+        - Session end: cleaned if all tests pass (unless --my-debug)
+        - On failure: temp dir is preserved for inspection
+
+    Note: Golden/fixture files should be placed in the parent folder
+    (e.g., test_foo/*.ged) - only temp/ subfolder is auto-cleaned.
+    """
+    test_module_path = Path(request.fspath)
+    return get_test_temp_dir(test_module_path)
+
+
+@pytest.fixture
+def test_data_dir(request) -> Path:
+    """
+    Fixture providing the test data directory (parent of temp/).
+
+    Usage:
+        def test_something(test_data_dir, test_temp_dir):
+            input_file = test_data_dir / "input.ged"      # Golden file
+            output_file = test_temp_dir / "output.ged"    # Generated file
+            ...
+
+    Pattern: tests/<path>/test_foo.py → tests/<path>/test_foo/
+
+    This folder is NOT auto-cleaned, so it's safe for golden files.
+    """
+    test_module_path = Path(request.fspath)
+    module_name = test_module_path.stem
+    data_dir = test_module_path.parent / module_name
+    data_dir.mkdir(parents=True, exist_ok=True)
+    return data_dir
+
+
+@pytest.fixture
+def test_user(request) -> UserInfo:
+    """
+    Fixture providing a UserInfo for the test module.
+
+    Usage:
+        def test_something(test_user):
+            db_file = test_user.db_file
+            ...
+
+    Pattern: tests/<path>/test_foo.py → UserInfo with base_dir at test_foo/temp/
+    """
+    test_module_path = Path(request.fspath)
+    return get_test_user(test_module_path)
+
 
 @pytest.fixture
 def test_db(request, is_debug):
@@ -139,21 +229,41 @@ def pytest_runtest_makereport(item, call):
 # ==================== Test Session Hooks ====================
 
 def _find_test_temp_dirs() -> list[Path]:
-    """Find all test temp directories (tests/**/test_*/temp/)."""
+    """Find all test temp directories (tests/**/test_*/temp/).
+
+    Only returns the temp/ subfolders, preserving golden files in parent folders.
+    """
     temp_dirs = []
     for test_file in TESTS_DIR.rglob("test_*.py"):
         temp_dir = test_file.parent / test_file.stem / "temp"
         if temp_dir.exists():
-            temp_dirs.append(temp_dir.parent)  # Return the test_* folder, not temp/
+            temp_dirs.append(temp_dir)  # Return only temp/, preserve parent folder
     return temp_dirs
 
 
 def _cleanup_test_data() -> list[str]:
-    """Remove all test data directories."""
+    """Remove all test temp directories (only temp/ subfolders) and empty parent folders."""
     cleaned = []
     for temp_dir in _find_test_temp_dirs():
         shutil.rmtree(temp_dir)
         cleaned.append(str(temp_dir.relative_to(TESTS_DIR)))
+
+        # Also remove parent folder if it's now empty (no golden files)
+        parent_dir = temp_dir.parent
+        if parent_dir.exists() and not any(parent_dir.iterdir()):
+            parent_dir.rmdir()
+            cleaned.append(str(parent_dir.relative_to(TESTS_DIR)) + " (empty)")
+    return cleaned
+
+
+def _cleanup_empty_test_dirs() -> list[str]:
+    """Remove any empty test_* directories (created by fixtures but unused)."""
+    cleaned = []
+    for test_file in TESTS_DIR.rglob("test_*.py"):
+        test_dir = test_file.parent / test_file.stem
+        if test_dir.exists() and test_dir.is_dir() and not any(test_dir.iterdir()):
+            test_dir.rmdir()
+            cleaned.append(str(test_dir.relative_to(TESTS_DIR)) + " (empty)")
     return cleaned
 
 
@@ -197,8 +307,12 @@ def pytest_sessionstart(session):
     Called before the whole test session starts.
     Clean up test data to ensure a clean slate.
     """
-    # Clean up test data
+    # Clean up test temp directories
     cleaned = _cleanup_test_data()
+
+    # Clean up empty test data directories (no golden files)
+    cleaned.extend(_cleanup_empty_test_dirs())
+
     if cleaned:
         print(f"Cleaned up test directories at start: {', '.join(cleaned)}")
 
@@ -219,24 +333,28 @@ def pytest_sessionfinish(session, exitstatus):
 
     if is_debug:
         if temp_dirs:
-            print(f"\n📁 Debug mode: Test files retained for inspection:")
+            print(f"\n[DEBUG] Test files retained for inspection:")
             for d in temp_dirs:
                 print(f"   - {d.relative_to(TESTS_DIR)}")
         return
 
     if exitstatus == 0:
-        # All tests passed - clean up
+        # All tests passed - clean up temp dirs and empty parent dirs
         cleaned = _cleanup_test_data()
+        cleaned.extend(_cleanup_empty_test_dirs())
         if cleaned:
-            print(f"\n✅ All tests passed. Cleaned up: {', '.join(cleaned)}")
+            print(f"\n[OK] All tests passed. Cleaned up: {', '.join(cleaned)}")
 
         legacy_files = _cleanup_legacy_test_files()
         if legacy_files:
             print(f"   Also cleaned up legacy files: {', '.join(legacy_files)}")
     else:
-        # Some tests failed - keep files for debugging
+        # Some tests failed - keep temp files for debugging, but clean empty dirs
+        empty_cleaned = _cleanup_empty_test_dirs()
+        if empty_cleaned:
+            print(f"\nCleaned up empty directories: {', '.join(empty_cleaned)}")
         if temp_dirs:
-            print(f"\n⚠️  Some tests failed. Test files retained for debugging:")
+            print(f"\n[WARN] Some tests failed. Test files retained for debugging:")
             for d in temp_dirs:
                 print(f"   - {d.relative_to(TESTS_DIR)}")
 
@@ -264,8 +382,8 @@ def run_script_with_debug(cmd, debug=False, cwd=None, timeout=None):
     )
     if debug:
         # if result.stderr:
-        print(f"🔍 Running: {' '.join(cmd)}")
-        print(f"📤 STDOUT:\n{result.stdout}")
-        print(f"❌ STDERR:\n{result.stderr}")
+        print(f"Running: {' '.join(cmd)}")
+        print(f"STDOUT:\n{result.stdout}")
+        print(f"STDERR:\n{result.stderr}")
         print("-" * 80)
     return result
