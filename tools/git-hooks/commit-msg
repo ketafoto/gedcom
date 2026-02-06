@@ -1,0 +1,62 @@
+#!/bin/sh
+
+# This hook is used to automatically add a prefix to the commit message:
+# - backend: API: for backend API/routes/endpoint changes
+# - backend: database: for backend database changes
+# - frontend: for frontend changes
+# - front-back-end: for changes to both backend and frontend
+# - [NO-PREFIX] for changes that are not related to backend or frontend
+#
+
+# To install this hook, run:
+#   git config core.hooksPath tools/git-hooks
+
+MSG_FILE="$1"
+MSG=$(cat "$MSG_FILE")
+
+# Skip if message already has a prefix
+case "$MSG" in
+  backend:\ API:*|backend:\ database:*|backend:\ API+database:*|frontend:*|front-back-end:*|\[*\]*)
+    exit 0
+    ;;
+esac
+
+# Detect changed paths
+FILES=$(git diff --cached --name-only)
+
+HAS_BE=false
+HAS_DB=false
+HAS_FE=false
+
+for file in $FILES; do
+  case "$file" in
+    backend/*|tests/backend/*)
+      HAS_BE=true
+      ;;
+    database/*|tests/database/*)
+      HAS_DB=true
+      ;;
+    frontend/*|tests/frontend/*)
+      HAS_FE=true
+      ;;
+  esac
+done
+
+PREFIX=""
+
+if [ "$HAS_FE" = true ] && { [ "$HAS_BE" = true ] || [ "$HAS_DB" = true ]; }; then
+  PREFIX="front-back-end:"
+elif [ "$HAS_BE" = true ] && [ "$HAS_DB" = true ]; then
+  PREFIX="backend: API+database:"
+elif [ "$HAS_BE" = true ]; then
+  PREFIX="backend: API:"
+elif [ "$HAS_DB" = true ]; then
+  PREFIX="backend: database:"
+elif [ "$HAS_FE" = true ]; then
+  PREFIX="frontend:"
+else
+  exit 0
+fi
+
+echo "$PREFIX $MSG" > "$MSG_FILE"
+
