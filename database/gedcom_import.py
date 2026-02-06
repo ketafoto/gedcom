@@ -125,13 +125,13 @@ def _create_family(family_data, db: Session) -> Family:
 def backup_database(db_file: Path) -> Optional[Path]:
     """Create timestamped backup of existing database."""
     if not db_file.exists():
-        print(f"⚠️  Database {db_file} does not exist, skipping backup")
+        print(f"[WARN] Database {db_file} does not exist, skipping backup")
         return None
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     backup_path = db_file.with_suffix(f".sqlite.{timestamp}")
     shutil.copy2(db_file, backup_path)
-    print(f"✅ Backed up {db_file} → {backup_path}")
+    print(f"[OK] Backed up {db_file} -> {backup_path}")
     return backup_path
 
 def is_exact_gedcom_date(gedcom_date: str) -> bool:
@@ -505,24 +505,24 @@ def import_gedcom(gedcom_file: Path, db_file: Path) -> bool:
 
     # Validation
     if not gedcom_file.exists() or gedcom_file.stat().st_size == 0:
-        print(f"❌ ERROR: Empty or missing GEDCOM file: {gedcom_file}")
+        print(f"[ERROR] Empty or missing GEDCOM file: {gedcom_file}")
         return False
 
     # Backup database
     backup_database(db_file)
 
     # Parse GEDCOM
-    print(f"📖 Parsing {gedcom_file}...")
+    print(f"Parsing {gedcom_file}...")
     header, individuals, families, unsupported_tags = parse_gedcom_file(gedcom_file)
     print(f"  Found {len(individuals)} individuals, {len(families)} families")
 
     if len(individuals) + len(families) == 0:
-        print(f"❌ ERROR: No GEDCOM records (INDI/FAM) found in {gedcom_file}")
+        print(f"[ERROR] No GEDCOM records (INDI/FAM) found in {gedcom_file}")
         return False
 
     # Warn about unsupported tags
     if unsupported_tags:
-        print(f"⚠️  WARNING: Found {len(unsupported_tags)} unsupported GEDCOM tags:")
+        print(f"[WARN] Found {len(unsupported_tags)} unsupported GEDCOM tags:")
         for tag in unsupported_tags[:5]:  # Show first 5
             print(f"  - {tag}")
         if len(unsupported_tags) > 5:
@@ -533,7 +533,7 @@ def import_gedcom(gedcom_file: Path, db_file: Path) -> bool:
         db_engine = database.db.engine_from_url(f"sqlite:///{db_file}")
         with Session(bind=db_engine) as db:
             # Clear existing data (order matters due to foreign key constraints)
-            print("🗑️  Clearing existing data...")
+            print("Clearing existing data...")
             for table in ["main_family_children", "main_family_members",
                          "main_events", "main_media",
                          "main_families", "main_individual_names", "main_individuals",
@@ -577,7 +577,7 @@ def import_gedcom(gedcom_file: Path, db_file: Path) -> bool:
             gedcom_to_db_id = {}
 
             # Import individuals first
-            print("👤 Importing individuals...")
+            print("Importing individuals...")
             event_count = 0
             media_count = 0
             for gedcom_id, ind_data in individuals.items():
@@ -633,7 +633,7 @@ def import_gedcom(gedcom_file: Path, db_file: Path) -> bool:
                         media_count += 1
 
             # Import families
-            print("👨‍👩‍👧‍👦 Importing families...")
+            print("Importing families...")
             family_to_db_id = {}
             for gedcom_id, fam_data in families.items():
                 fam_create = schemas.FamilyCreate(
@@ -704,17 +704,22 @@ def import_gedcom(gedcom_file: Path, db_file: Path) -> bool:
                         media_count += 1
 
             db.commit()
-            print(f"✅ Successfully imported {gedcom_file}")
+            print(f"[OK] Successfully imported {gedcom_file}")
             print(f"  - {len(gedcom_to_db_id)} individuals")
             print(f"  - {len(families)} families")
             if event_count > 0:
                 print(f"  - {event_count} events")
             if media_count > 0:
                 print(f"  - {media_count} media objects")
+
+            # Dispose engine to release file locks (important on Windows)
+            db_engine.dispose()
             return True
 
     except Exception as e:
-        print(f"❌ ERROR: Import failed: {e}")
+        print(f"[ERROR] Import failed: {e}")
+        if 'db_engine' in locals():
+            db_engine.dispose()
         return False
 
 def import_for_user(username: Optional[str] = None, gedcom_file: Optional[str] = None) -> bool:
@@ -730,7 +735,7 @@ def import_for_user(username: Optional[str] = None, gedcom_file: Optional[str] =
     """
     user_info = UserInfo(username=username, gedcom_file=gedcom_file)
 
-    print(f"📁 Importing for user: {user_info.username}")
+    print(f"Importing for user: {user_info.username}")
     print(f"   GEDCOM file: {user_info.gedcom_file}")
     print(f"   Database: {user_info.db_file}")
 

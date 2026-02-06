@@ -79,7 +79,7 @@ def get_gedcom_date(iso_date: Optional[str], gedcom_date: Optional[str]) -> Opti
 def export_gedcom(db_file: Path, output_file: Path) -> bool:
     """Export database to GEDCOM 5.5.1 format."""
     if not db_file.exists():
-        print(f"❌ ERROR: Database not found: {db_file}")
+        print(f"[ERROR] Database not found: {db_file}")
         return False
 
     try:
@@ -338,16 +338,21 @@ def export_gedcom(db_file: Path, output_file: Path) -> bool:
 
                 out.write("0 TRLR\n")
 
-        msg = f"✅ Successfully exported {len(individuals)} individuals, {len(families)} families"
+        msg = f"[OK] Successfully exported {len(individuals)} individuals, {len(families)} families"
         if event_count > 0:
             msg += f", {event_count} events"
         if media_count > 0:
             msg += f", {media_count} media"
         print(f"{msg} to {output_file}")
+
+        # Dispose engine to release file locks (important on Windows)
+        db_engine.dispose()
         return True
 
     except Exception as e:
-        print(f"❌ ERROR: Export failed: {e}")
+        print(f"[ERROR] Export failed: {e}")
+        if 'db_engine' in locals():
+            db_engine.dispose()
         return False
 
 def export_for_user(username: Optional[str] = None, output_file: Optional[str] = None) -> bool:
