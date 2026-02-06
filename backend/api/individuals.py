@@ -136,10 +136,14 @@ def update_individual(
                 # Clear existing names and add new ones
                 individual.names.clear()
 
-                for name_in in value:
+                for idx, name_in in enumerate(value):
                     db_name = database.models.IndividualName(
-                        given_name=name_in['given_name'],
-                        family_name=name_in['family_name'],
+                        given_name=name_in.get('given_name'),
+                        family_name=name_in.get('family_name'),
+                        name_type=name_in.get('name_type'),
+                        prefix=name_in.get('prefix'),
+                        suffix=name_in.get('suffix'),
+                        name_order=name_in.get('name_order', idx),
                         individual=individual,
                     )
 

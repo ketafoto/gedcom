@@ -138,12 +138,24 @@ export function IndividualFormPage() {
   });
 
   const onSubmit = async (data: IndividualFormData) => {
+    const sanitized: IndividualFormData = {
+      ...data,
+      birth_date: data.birth_date?.trim() ? data.birth_date : undefined,
+      death_date: data.death_date?.trim() ? data.death_date : undefined,
+      birth_date_approx: data.birth_date_approx?.trim()
+        ? data.birth_date_approx
+        : undefined,
+      death_date_approx: data.death_date_approx?.trim()
+        ? data.death_date_approx
+        : undefined,
+    };
+
     if (isEditing) {
-      updateMutation.mutate({ id: Number(id), data });
+      updateMutation.mutate({ id: Number(id), data: sanitized });
     } else {
       createMutation.mutate({
-        ...data,
-        names: data.names.map((n, index) => ({ ...n, name_order: index })),
+        ...sanitized,
+        names: sanitized.names.map((n, index) => ({ ...n, name_order: index })),
       });
     }
   };
@@ -197,37 +209,33 @@ export function IndividualFormPage() {
                   )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Given Name"
-                    {...register(`names.${index}.given_name`)}
-                    error={errors.names?.[index]?.given_name?.message}
-                  />
+                  <div className="flex gap-4 min-w-0">
+                    <div className="space-y-1 w-40 shrink-0">
+                      <label className="block text-sm font-medium text-gray-700">Name Type</label>
+                      <select
+                        {...register(`names.${index}.name_type`)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      >
+                        <option value="">Select...</option>
+                        {nameTypes?.map((type) => (
+                          <option key={type.code} value={type.code}>
+                            {type.description}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Input
+                        label="Given Name"
+                        {...register(`names.${index}.given_name`)}
+                        error={errors.names?.[index]?.given_name?.message}
+                      />
+                    </div>
+                  </div>
                   <Input
                     label="Family Name"
                     {...register(`names.${index}.family_name`)}
                     error={errors.names?.[index]?.family_name?.message}
-                  />
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700">Name Type</label>
-                    <select
-                      {...register(`names.${index}.name_type`)}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    >
-                      <option value="">Select...</option>
-                      {nameTypes?.map((type) => (
-                        <option key={type.code} value={type.code}>
-                          {type.description}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <Input
-                    label="Prefix (e.g., Dr.)"
-                    {...register(`names.${index}.prefix`)}
-                  />
-                  <Input
-                    label="Suffix (e.g., Jr.)"
-                    {...register(`names.${index}.suffix`)}
                   />
                 </div>
               </div>

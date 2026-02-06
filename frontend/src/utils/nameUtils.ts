@@ -10,10 +10,24 @@ const NAME_TYPE_RANK: Record<string, number> = {
 const normalizeNameType = (nameType?: string): string =>
   (nameType ?? '').trim().toLowerCase();
 
+const resolveNameTypeKey = (nameType?: string): string => {
+  const normalized = normalizeNameType(nameType);
+  if (!normalized) return '';
+
+  if (normalized in NAME_TYPE_RANK) return normalized;
+
+  if (normalized.includes('maiden')) return 'maiden';
+  if (normalized.includes('married')) return 'married';
+  if (normalized.includes('aka') || normalized.includes('also known')) return 'aka';
+  if (normalized.includes('birth')) return 'birth';
+
+  return '';
+};
+
 const getNameRank = (name: IndividualName): number => {
-  const normalized = normalizeNameType(name.name_type);
-  if (normalized in NAME_TYPE_RANK) {
-    return NAME_TYPE_RANK[normalized];
+  const resolved = resolveNameTypeKey(name.name_type);
+  if (resolved && resolved in NAME_TYPE_RANK) {
+    return NAME_TYPE_RANK[resolved];
   }
   return -1;
 };
@@ -23,22 +37,16 @@ export const getLatestName = (names: IndividualName[]): IndividualName | undefin
 
   let best = names[0];
   let bestRank = getNameRank(best);
-  let bestOrder = best.name_order ?? 0;
 
   names.forEach((name, index) => {
     const rank = getNameRank(name);
     if (rank > bestRank) {
       best = name;
       bestRank = rank;
-      bestOrder = name.name_order ?? index;
       return;
     }
-    if (rank === bestRank) {
-      const order = name.name_order ?? index;
-      if (order > bestOrder) {
-        best = name;
-        bestOrder = order;
-      }
+    if (rank === bestRank && bestRank < 0 && index === 0) {
+      best = name;
     }
   });
 
