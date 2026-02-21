@@ -194,6 +194,54 @@ export interface CreateUserResponse {
   invitation_link: string;
 }
 
+// ==================== Tree Visualization ====================
+export interface TreeNodeEvent {
+  event_type: string;
+  event_date?: string;
+  event_date_approx?: string;
+  event_place?: string;
+  description?: string;
+}
+
+export interface TreeNode {
+  id: number;
+  gedcom_id?: string;
+  sex_code?: string;
+  display_name: string;
+  birth_date?: string;
+  birth_date_approx?: string;
+  death_date?: string;
+  death_date_approx?: string;
+  photo_url?: string;
+  generation: number;
+  events: TreeNodeEvent[];
+}
+
+export interface TreeEdge {
+  parent_id: number;
+  child_id: number;
+  family_id: number;
+  relationship: 'biological' | 'non-biological';
+}
+
+export interface TreeCouple {
+  family_id: number;
+  partner_ids: number[];
+  marriage_date?: string;
+  marriage_date_approx?: string;
+  divorce_date?: string;
+  family_type?: string;
+}
+
+export interface TreeData {
+  focus_id: number;
+  max_ancestor_depth: number;
+  max_descendant_depth: number;
+  nodes: TreeNode[];
+  edges: TreeEdge[];
+  couples: TreeCouple[];
+}
+
 // ==================== Statistics ====================
 export interface DatabaseStats {
   individuals_count: number;

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
@@ -20,6 +20,11 @@ import { BulkEditIndividualsPage } from './pages/bulk-edit/BulkEditIndividualsPa
 import { BulkEditFamiliesPage } from './pages/bulk-edit/BulkEditFamiliesPage';
 import { ExportPage } from './pages/export/ExportPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
+
+// Lazy-load TreePage (heavy dependency: @xyflow/react)
+const TreePage = lazy(() =>
+  import('./pages/tree/TreePage').then((m) => ({ default: m.TreePage }))
+);
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -84,26 +89,29 @@ function App() {
               }
             >
               <Route index element={<DashboardPage />} />
-              
+
               {/* Individuals */}
               <Route path="individuals" element={<IndividualsListPage />} />
               <Route path="individuals/new" element={<IndividualFormPage />} />
               <Route path="individuals/:id" element={<IndividualDetailPage />} />
               <Route path="individuals/:id/edit" element={<IndividualFormPage />} />
-              
+
               {/* Families */}
               <Route path="families" element={<FamiliesListPage />} />
               <Route path="families/new" element={<FamilyFormPage />} />
               <Route path="families/:id" element={<FamilyDetailPage />} />
               <Route path="families/:id/edit" element={<FamilyFormPage />} />
-              
+
+              {/* Tree Visualization */}
+              <Route path="individuals/:id/tree" element={<Suspense fallback={<div className="flex items-center justify-center h-screen">Loading tree...</div>}><TreePage /></Suspense>} />
+
               {/* Bulk Edit */}
               <Route path="bulk-edit/individuals" element={<BulkEditIndividualsPage />} />
               <Route path="bulk-edit/families" element={<BulkEditFamiliesPage />} />
-              
+
               {/* Export */}
               <Route path="export" element={<ExportPage />} />
-              
+
               {/* Settings */}
               <Route path="settings" element={<SettingsPage />} />
             </Route>

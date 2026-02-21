@@ -17,7 +17,7 @@ from sqlalchemy import text
 
 from database import db
 from database.user_info import UserInfo
-from backend.api import individuals, families, events, media, header, auth, types, export
+from backend.api import individuals, families, events, media, header, auth, types, export, tree
 from backend.logging import setup_logging
 
 # Initialize backend logging to use syslog
@@ -92,6 +92,7 @@ app.include_router(events.router)
 app.include_router(media.router)
 app.include_router(header.router)
 app.include_router(export.router)
+app.include_router(tree.router)
 
 
 @app.get("/")

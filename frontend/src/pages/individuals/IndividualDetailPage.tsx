@@ -9,6 +9,7 @@ import {
   Heart,
   Image,
   Plus,
+  GitBranch,
 } from 'lucide-react';
 import { individualsApi } from '../../api/individuals';
 import { familiesApi } from '../../api/families';
@@ -117,6 +118,12 @@ export function IndividualDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Link to={`/individuals/${id}/tree`}>
+            <Button variant="secondary">
+              <GitBranch className="w-4 h-4 mr-2" />
+              View Tree
+            </Button>
+          </Link>
           <Link to={`/individuals/${id}/edit`}>
             <Button variant="secondary">
               <Edit2 className="w-4 h-4 mr-2" />

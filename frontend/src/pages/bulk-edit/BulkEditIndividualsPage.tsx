@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Search, Edit2, Trash2, Save, X, Users } from 'lucide-react';
+import { Search, Edit2, Trash2, Save, X, Users, GitBranch } from 'lucide-react';
 import { individualsApi } from '../../api/individuals';
 import { typesApi } from '../../api/types';
 import { Button } from '../../components/common/Button';
@@ -325,6 +325,13 @@ export function BulkEditIndividualsPage() {
                           </div>
                         ) : (
                           <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => navigate(`/individuals/${individual.id}/tree`)}
+                              className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                              title="View Family Tree"
+                            >
+                              <GitBranch className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => handleEdit(individual)}
                               className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"

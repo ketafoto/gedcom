@@ -206,3 +206,47 @@ class Header(HeaderBase):
     id: int = 1  # Always 1 (singleton)
 
     model_config = ConfigDict(from_attributes=True)
+
+# ==================== Tree Visualization ====================
+
+class TreeNodeEvent(BaseModel):
+    event_type: str
+    event_date: Optional[str] = None
+    event_date_approx: Optional[str] = None
+    event_place: Optional[str] = None
+    description: Optional[str] = None
+
+class TreeNode(BaseModel):
+    id: int
+    gedcom_id: Optional[str] = None
+    sex_code: Optional[str] = None
+    display_name: str
+    birth_date: Optional[str] = None
+    birth_date_approx: Optional[str] = None
+    death_date: Optional[str] = None
+    death_date_approx: Optional[str] = None
+    photo_url: Optional[str] = None
+    generation: int
+    events: List[TreeNodeEvent] = []
+
+class TreeEdge(BaseModel):
+    parent_id: int
+    child_id: int
+    family_id: int
+    relationship: str = "biological"  # "biological" or "non-biological"
+
+class TreeCouple(BaseModel):
+    family_id: int
+    partner_ids: List[int]
+    marriage_date: Optional[str] = None
+    marriage_date_approx: Optional[str] = None
+    divorce_date: Optional[str] = None
+    family_type: Optional[str] = "marriage"
+
+class TreeResponse(BaseModel):
+    focus_id: int
+    max_ancestor_depth: int
+    max_descendant_depth: int
+    nodes: List[TreeNode]
+    edges: List[TreeEdge]
+    couples: List[TreeCouple]
