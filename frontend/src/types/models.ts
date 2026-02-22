@@ -136,6 +136,8 @@ export interface Media {
   media_date?: string;
   media_date_approx?: string;
   description?: string;
+  is_default?: boolean;
+  age_on_photo?: number;
 }
 
 export interface MediaCreate {
@@ -146,6 +148,8 @@ export interface MediaCreate {
   media_date?: string;
   media_date_approx?: string;
   description?: string;
+  is_default?: boolean;
+  age_on_photo?: number;
 }
 
 export interface MediaUpdate extends Partial<MediaCreate> {}
@@ -203,6 +207,12 @@ export interface TreeNodeEvent {
   description?: string;
 }
 
+export interface TreeNodePhoto {
+  url: string;
+  age?: number;
+  is_default: boolean;
+}
+
 export interface TreeNode {
   id: number;
   gedcom_id?: string;
@@ -213,6 +223,7 @@ export interface TreeNode {
   death_date?: string;
   death_date_approx?: string;
   photo_url?: string;
+  photos: TreeNodePhoto[];
   generation: number;
   events: TreeNodeEvent[];
 }

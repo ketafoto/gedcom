@@ -137,6 +137,8 @@ class MediaBase(BaseModel):
     media_date: Optional[date] = None
     media_date_approx: Optional[str] = None  # Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
     description: Optional[str] = None
+    is_default: Optional[bool] = None
+    age_on_photo: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -216,6 +218,11 @@ class TreeNodeEvent(BaseModel):
     event_place: Optional[str] = None
     description: Optional[str] = None
 
+class TreeNodePhoto(BaseModel):
+    url: str
+    age: Optional[int] = None
+    is_default: bool = False
+
 class TreeNode(BaseModel):
     id: int
     gedcom_id: Optional[str] = None
@@ -226,6 +233,7 @@ class TreeNode(BaseModel):
     death_date: Optional[str] = None
     death_date_approx: Optional[str] = None
     photo_url: Optional[str] = None
+    photos: List[TreeNodePhoto] = []
     generation: int
     events: List[TreeNodeEvent] = []
 

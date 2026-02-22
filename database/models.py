@@ -118,6 +118,8 @@ class Media(Base):
     media_date = Column(Date, nullable=True)
     media_date_approx = Column(String, nullable=True)  # Raw GEDCOM date string for non-exact dates, e.g. 'ABT 1970'
     description = Column(Text, nullable=True)
+    is_default = Column(Integer, nullable=True, default=0)
+    age_on_photo = Column(Integer, nullable=True)
 
     # Relationships
     individual = relationship("Individual", back_populates="media")

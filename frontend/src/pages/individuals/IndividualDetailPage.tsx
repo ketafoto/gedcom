@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -10,6 +11,8 @@ import {
   Image,
   Plus,
   GitBranch,
+  Star,
+  Camera,
 } from 'lucide-react';
 import { individualsApi } from '../../api/individuals';
 import { familiesApi } from '../../api/families';
@@ -18,6 +21,7 @@ import { mediaApi } from '../../api/media';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
+import { PhotoUploadDialog } from '../../components/photo/PhotoUploadDialog';
 import toast from 'react-hot-toast';
 
 export function IndividualDetailPage() {
@@ -48,6 +52,8 @@ export function IndividualDetailPage() {
     enabled: !!id,
   });
 
+  const [showPhotoDialog, setShowPhotoDialog] = useState(false);
+
   const deleteMutation = useMutation({
     mutationFn: individualsApi.delete,
     onSuccess: () => {
@@ -59,6 +65,36 @@ export function IndividualDetailPage() {
       toast.error('Failed to delete individual');
     },
   });
+
+  const deleteMediaMutation = useMutation({
+    mutationFn: mediaApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['media', { individual_id: Number(id) }] });
+      toast.success('Photo deleted');
+    },
+    onError: () => toast.error('Failed to delete photo'),
+  });
+
+  const setDefaultMutation = useMutation({
+    mutationFn: mediaApi.setDefault,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['media', { individual_id: Number(id) }] });
+      toast.success('Default photo updated');
+    },
+    onError: () => toast.error('Failed to set default'),
+  });
+
+  const handlePhotoUpload = async (blob: Blob, age: number, isDefault: boolean) => {
+    await mediaApi.uploadPhoto({
+      file: blob,
+      individual_id: Number(id),
+      age_on_photo: age,
+      is_default: isDefault,
+    });
+    queryClient.invalidateQueries({ queryKey: ['media', { individual_id: Number(id) }] });
+    toast.success('Photo uploaded');
+    setShowPhotoDialog(false);
+  };
 
   const handleDelete = () => {
     const primaryName = individual?.names[0];
@@ -296,35 +332,94 @@ export function IndividualDetailPage() {
             )}
           </Card>
 
-          {/* Media */}
+          {/* Photos */}
           <Card
-            title="Media"
+            title="Photos"
             actions={
-              <Button variant="ghost" size="sm">
-                <Plus className="w-4 h-4" />
+              <Button variant="ghost" size="sm" onClick={() => setShowPhotoDialog(true)}>
+                <Camera className="w-4 h-4 mr-1" />
+                Add Photo
               </Button>
             }
           >
             {(media?.length || 0) === 0 ? (
               <div className="text-center py-4">
                 <Image className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                <p className="text-gray-500 text-sm">No media attached</p>
+                <p className="text-gray-500 text-sm">No photos yet</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => setShowPhotoDialog(true)}
+                >
+                  <Camera className="w-4 h-4 mr-1" />
+                  Add first photo
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {media?.slice(0, 4).map((item) => (
-                  <div
-                    key={item.id}
-                    className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center"
-                  >
-                    <Image className="w-8 h-8 text-gray-400" />
-                  </div>
-                ))}
+                {media
+                  ?.filter((m) => m.media_type_code === 'photo')
+                  .map((item) => (
+                    <div key={item.id} className="group relative">
+                      <div
+                        className={`aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden ring-2 ${
+                          item.is_default ? 'ring-amber-400' : 'ring-transparent'
+                        }`}
+                      >
+                        <img
+                          src={mediaApi.getFileUrl(item.id)}
+                          alt={`Age ${item.age_on_photo ?? '?'}`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                      {/* Age label */}
+                      <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
+                        age {item.age_on_photo ?? '?'}
+                      </span>
+                      {item.is_default && (
+                        <Star className="absolute top-1 right-1 w-4 h-4 text-amber-400 fill-amber-400" />
+                      )}
+                      {/* Hover actions */}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors
+                                      rounded-lg flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                        {!item.is_default && (
+                          <button
+                            onClick={() => setDefaultMutation.mutate(item.id)}
+                            className="p-1.5 bg-white/90 rounded-full hover:bg-white"
+                            title="Set as default"
+                          >
+                            <Star className="w-3.5 h-3.5 text-amber-500" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Delete this photo?'))
+                              deleteMediaMutation.mutate(item.id);
+                          }}
+                          className="p-1.5 bg-white/90 rounded-full hover:bg-white"
+                          title="Delete photo"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
               </div>
             )}
           </Card>
         </div>
       </div>
+
+      {/* Photo upload dialog */}
+      {showPhotoDialog && (
+        <PhotoUploadDialog
+          individualId={Number(id)}
+          onUpload={handlePhotoUpload}
+          onClose={() => setShowPhotoDialog(false)}
+        />
+      )}
     </div>
   );
 }

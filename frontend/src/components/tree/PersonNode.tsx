@@ -4,6 +4,7 @@ import type { TreeNode } from '../../types/models';
 import { MaleSilhouette } from './MaleSilhouette';
 import { FemaleSilhouette } from './FemaleSilhouette';
 import { PersonTooltip } from './PersonTooltip';
+import { PhotoCarousel } from './PhotoCarousel';
 
 interface PersonNodeData extends TreeNode {
   isFocus: boolean;
@@ -12,6 +13,7 @@ interface PersonNodeData extends TreeNode {
 /**
  * Custom React Flow node for rendering a person in the family tree.
  * Shows a rectangular (slightly rounded) portrait, name, and birth/death years.
+ * When hovered, cycles through all photos with a fade transition.
  */
 export const PersonNode = memo(function PersonNode({
   data,
@@ -20,10 +22,12 @@ export const PersonNode = memo(function PersonNode({
 }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
 
   const handleMouseEnter = useCallback((e: React.MouseEvent) => {
     setTooltipPos({ x: e.clientX, y: e.clientY });
     setShowTooltip(true);
+    setIsHovering(true);
   }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -32,9 +36,9 @@ export const PersonNode = memo(function PersonNode({
 
   const handleMouseLeave = useCallback(() => {
     setShowTooltip(false);
+    setIsHovering(false);
   }, []);
 
-  // Format year from date string (e.g. "1950-05-15" → "1950", or "ABT 1970" → "~1970")
   const formatYear = (
     exactDate?: string,
     approxDate?: string,
@@ -63,9 +67,10 @@ export const PersonNode = memo(function PersonNode({
     ? 'ring-amber-400 ring-4'
     : 'ring-gray-300 ring-2';
 
+  const hasPhotos = data.photos && data.photos.length > 0;
+
   return (
     <>
-      {/* Connection handles */}
       <Handle type="target" position={Position.Top} className="!bg-transparent !border-0 !w-0 !h-0" />
       <Handle type="source" position={Position.Bottom} className="!bg-transparent !border-0 !w-0 !h-0" />
 
@@ -76,13 +81,19 @@ export const PersonNode = memo(function PersonNode({
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Portrait: rectangular with slightly rounded corners */}
+        {/* Portrait */}
         <div
           className={`w-[88px] h-[110px] rounded-xl overflow-hidden ring ${borderColor} ${
             data.isFocus ? 'shadow-lg shadow-amber-200' : ''
           } bg-white transition-shadow group-hover:shadow-md`}
         >
-          {data.photo_url ? (
+          {hasPhotos ? (
+            <PhotoCarousel
+              photos={data.photos}
+              alt={data.display_name}
+              isHovering={isHovering}
+            />
+          ) : data.photo_url ? (
             <img
               src={data.photo_url}
               alt={data.display_name}
@@ -107,7 +118,6 @@ export const PersonNode = memo(function PersonNode({
         </div>
       </div>
 
-      {/* Tooltip portal */}
       {showTooltip && data.events.length > 0 && (
         <PersonTooltip
           data={data}

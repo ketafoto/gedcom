@@ -46,12 +46,69 @@ def _get_birth_sort_key(individual: models.Individual):
     return (1, "9999")  # No date → sort to the end
 
 
+PREFERRED_AGE = 35
+
+
 def _get_photo_url(individual: models.Individual) -> Optional[str]:
-    """Get URL for the individual's first photo, or None."""
+    """Get the best photo URL for tree display.
+
+    Priority: explicit default → closest to age 35 → first available.
+    """
+    first_url: Optional[str] = None
+    best_age_url: Optional[str] = None
+    best_age_diff = float("inf")
+
     for m in individual.media:
         if m.media_type_code == "photo" and m.file_path:
-            return f"/api/media/{m.id}/file"
-    return None
+            url = f"/api/media/{m.id}/file"
+            if m.is_default:
+                return url
+            if first_url is None:
+                first_url = url
+            if m.age_on_photo is not None:
+                diff = abs(m.age_on_photo - PREFERRED_AGE)
+                if diff < best_age_diff:
+                    best_age_diff = diff
+                    best_age_url = url
+
+    return best_age_url or first_url
+
+
+def _get_all_photos(individual: models.Individual) -> List[schemas.TreeNodePhoto]:
+    """Build the list of photos for the carousel, sorted by age.
+
+    If no photo carries an explicit ``is_default`` flag the one whose age is
+    closest to 35 is promoted to effective default so the frontend shows a
+    sensible rest-state photo without extra logic.
+    """
+    photos = []
+    has_explicit_default = False
+    for m in individual.media:
+        if m.media_type_code == "photo" and m.file_path:
+            is_def = bool(m.is_default)
+            if is_def:
+                has_explicit_default = True
+            photos.append(
+                schemas.TreeNodePhoto(
+                    url=f"/api/media/{m.id}/file",
+                    age=m.age_on_photo,
+                    is_default=is_def,
+                )
+            )
+    photos.sort(key=lambda p: (p.age if p.age is not None else 9999))
+
+    if not has_explicit_default and photos:
+        best_idx = 0
+        best_diff = float("inf")
+        for i, p in enumerate(photos):
+            if p.age is not None:
+                diff = abs(p.age - PREFERRED_AGE)
+                if diff < best_diff:
+                    best_diff = diff
+                    best_idx = i
+        photos[best_idx].is_default = True
+
+    return photos
 
 
 def _build_node(
@@ -85,6 +142,7 @@ def _build_node(
         death_date=str(individual.death_date) if individual.death_date else None,
         death_date_approx=individual.death_date_approx,
         photo_url=_get_photo_url(individual),
+        photos=_get_all_photos(individual),
         generation=generation,
         events=events,
     )

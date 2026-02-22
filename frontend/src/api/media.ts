@@ -8,26 +8,37 @@ export interface MediaListParams {
   family_id?: number;
 }
 
+export interface PhotoUploadParams {
+  file: Blob;
+  individual_id: number;
+  age_on_photo: number;
+  is_default: boolean;
+}
+
 export const mediaApi = {
-  /**
-   * List media with optional filtering
-   */
   list: async (params: MediaListParams = {}): Promise<Media[]> => {
     const response = await apiClient.get<Media[]>('/media', { params });
     return response.data;
   },
 
-  /**
-   * Get a single media by ID
-   */
   get: async (id: number): Promise<Media> => {
     const response = await apiClient.get<Media>(`/media/${id}`);
     return response.data;
   },
 
-  /**
-   * Upload a media file
-   */
+  uploadPhoto: async (params: PhotoUploadParams): Promise<Media> => {
+    const formData = new FormData();
+    formData.append('file', params.file, 'photo.jpg');
+    formData.append('individual_id', String(params.individual_id));
+    formData.append('age_on_photo', String(params.age_on_photo));
+    formData.append('is_default', String(params.is_default));
+
+    const response = await apiClient.post<Media>('/media/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
   upload: async (
     file: File,
     metadata: Omit<MediaCreate, 'file_path'>
@@ -37,33 +48,26 @@ export const mediaApi = {
     formData.append('metadata', JSON.stringify(metadata));
 
     const response = await apiClient.post<Media>('/media/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
 
-  /**
-   * Update media metadata
-   */
+  setDefault: async (id: number): Promise<Media> => {
+    const response = await apiClient.put<Media>(`/media/${id}/set-default`);
+    return response.data;
+  },
+
   update: async (id: number, data: MediaUpdate): Promise<Media> => {
     const response = await apiClient.put<Media>(`/media/${id}`, data);
     return response.data;
   },
 
-  /**
-   * Delete a media
-   */
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/media/${id}`);
   },
 
-  /**
-   * Get file URL for a media
-   */
   getFileUrl: (id: number): string => {
     return `/api/media/${id}/file`;
   },
 };
-
