@@ -1,12 +1,21 @@
-import { useState, useCallback, useRef } from 'react';
-import Cropper from 'react-easy-crop';
-import type { Area } from 'react-easy-crop';
-import { X, Camera, ZoomIn, ZoomOut } from 'lucide-react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import ReactCrop, {
+  type Crop,
+  type PixelCrop,
+  centerCrop,
+  makeAspectCrop,
+  convertToPixelCrop,
+} from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+import { X, Camera, ScanFace } from 'lucide-react';
 import { Button } from '../common/Button';
 import { getCroppedBlob } from './cropImage';
+import { detectFace, computeAutoCrop, isFaceDetectorAvailable } from './faceDetect';
 
 const ACCEPTED_FORMATS = '.jpg,.jpeg,.png,.webp,.heic,.heif';
 const PORTRAIT_ASPECT = 4 / 5;
+const PREVIEW_W = 88;
+const PREVIEW_H = 110;
 
 interface PhotoUploadDialogProps {
   individualId: number;
@@ -19,53 +28,143 @@ export function PhotoUploadDialog({
   onClose,
 }: PhotoUploadDialogProps) {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedArea, setCroppedArea] = useState<Area | null>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [age, setAge] = useState('');
   const [isDefault, setIsDefault] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
   const [error, setError] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  const onFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  /* ---- file selection ---- */
 
+  const onFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setError('');
+      setImageSrc(URL.createObjectURL(file));
+      setCrop(undefined);
+      setCompletedCrop(undefined);
+    },
+    [],
+  );
+
+  /* ---- image loaded ---- */
+
+  const onImageLoad = useCallback(
+    (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = e.currentTarget;
+      imgRef.current = img;
+      const { naturalWidth: w, naturalHeight: h } = img;
+
+      const initial = centerCrop(
+        makeAspectCrop({ unit: '%', width: 90 }, PORTRAIT_ASPECT, w, h),
+        w,
+        h,
+      );
+      setCrop(initial);
+      setCompletedCrop(convertToPixelCrop(initial, img.width, img.height));
+    },
+    [],
+  );
+
+  /* ---- face auto-detect ---- */
+
+  const handleAutoDetect = useCallback(async () => {
+    if (!imgRef.current) return;
+    setIsDetecting(true);
     setError('');
-    const objectUrl = URL.createObjectURL(file);
-    setImageSrc(objectUrl);
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
+    try {
+      const face = await detectFace(imgRef.current);
+      if (!face) {
+        setError('No face detected. Position the crop manually.');
+        return;
+      }
+      const img = imgRef.current;
+      const newCrop = computeAutoCrop(face, img.naturalWidth, img.naturalHeight);
+      setCrop(newCrop);
+      setCompletedCrop(convertToPixelCrop(newCrop, img.width, img.height));
+    } catch {
+      setError('Face detection failed.');
+    } finally {
+      setIsDetecting(false);
+    }
   }, []);
 
-  const onCropComplete = useCallback((_: Area, croppedAreaPixels: Area) => {
-    setCroppedArea(croppedAreaPixels);
-  }, []);
+  /* ---- preview canvas ---- */
+
+  useEffect(() => {
+    const c = completedCrop;
+    const img = imgRef.current;
+    const canvas = previewCanvasRef.current;
+    if (!c || !img || !canvas || c.width === 0 || c.height === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = PREVIEW_W * dpr;
+    canvas.height = PREVIEW_H * dpr;
+
+    const scaleX = img.naturalWidth / img.width;
+    const scaleY = img.naturalHeight / img.height;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(
+      img,
+      c.x * scaleX,
+      c.y * scaleY,
+      c.width * scaleX,
+      c.height * scaleY,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+  }, [completedCrop]);
+
+  /* ---- submit ---- */
 
   const handleOk = useCallback(async () => {
-    if (!imageSrc || !croppedArea) return;
+    if (!imageSrc || !completedCrop || !imgRef.current) return;
 
     const ageNum = parseInt(age, 10);
     if (isNaN(ageNum) || ageNum < 0 || ageNum > 150) {
-      setError('Please enter a valid age (0–150)');
+      setError('Please enter a valid age (0\u2013150)');
       return;
     }
 
     setIsUploading(true);
     setError('');
     try {
-      const blob = await getCroppedBlob(imageSrc, croppedArea);
+      const img = imgRef.current;
+      const scaleX = img.naturalWidth / img.width;
+      const scaleY = img.naturalHeight / img.height;
+
+      const blob = await getCroppedBlob(imageSrc, {
+        x: completedCrop.x * scaleX,
+        y: completedCrop.y * scaleY,
+        width: completedCrop.width * scaleX,
+        height: completedCrop.height * scaleY,
+      });
       await onUpload(blob, ageNum, isDefault);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
       setIsUploading(false);
     }
-  }, [imageSrc, croppedArea, age, isDefault, onUpload]);
+  }, [imageSrc, completedCrop, age, isDefault, onUpload]);
+
+  /* ---- render ---- */
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Add Photo</h2>
@@ -80,7 +179,6 @@ export function PhotoUploadDialog({
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {!imageSrc ? (
-            /* File picker area */
             <button
               onClick={() => fileInputRef.current?.click()}
               className="w-full h-64 border-2 border-dashed border-gray-300 rounded-xl
@@ -88,68 +186,108 @@ export function PhotoUploadDialog({
                          hover:border-emerald-400 hover:bg-emerald-50/30 transition-colors"
             >
               <Camera className="w-12 h-12 text-gray-400" />
-              <span className="text-gray-600 font-medium">Click to select a photo</span>
+              <span className="text-gray-600 font-medium">
+                Click to select a photo
+              </span>
               <span className="text-xs text-gray-400">
                 JPG, PNG, WebP, HEIC &middot; Max 20 MB
               </span>
             </button>
           ) : (
-            /* Cropper */
             <>
-              <div className="relative w-full h-80 bg-gray-900 rounded-xl overflow-hidden">
-                <Cropper
-                  image={imageSrc}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={PORTRAIT_ASPECT}
-                  onCropChange={setCrop}
-                  onZoomChange={setZoom}
-                  onCropComplete={onCropComplete}
-                />
-              </div>
+              <div className="flex gap-6">
+                {/* Crop area */}
+                <div className="flex-1 min-w-0">
+                  <div className="bg-gray-900 rounded-xl overflow-hidden inline-block">
+                    <ReactCrop
+                      crop={crop}
+                      onChange={(_, pc) => setCrop(pc)}
+                      onComplete={(c) => setCompletedCrop(c)}
+                      aspect={PORTRAIT_ASPECT}
+                      keepSelection
+                      ruleOfThirds
+                    >
+                      <img
+                        src={imageSrc}
+                        onLoad={onImageLoad}
+                        className="max-h-[400px] max-w-full"
+                        alt="Upload"
+                      />
+                    </ReactCrop>
+                  </div>
 
-              {/* Zoom control */}
-              <div className="flex items-center gap-3 px-2">
-                <ZoomOut className="w-4 h-4 text-gray-400" />
-                <input
-                  type="range"
-                  min={1}
-                  max={3}
-                  step={0.05}
-                  value={zoom}
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="flex-1 accent-emerald-600"
-                />
-                <ZoomIn className="w-4 h-4 text-gray-400" />
-              </div>
+                  <div className="flex items-center gap-3 mt-2">
+                    {isFaceDetectorAvailable() && (
+                      <button
+                        onClick={handleAutoDetect}
+                        disabled={isDetecting}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm
+                                   bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100
+                                   disabled:opacity-50 transition-colors"
+                      >
+                        <ScanFace className="w-4 h-4" />
+                        {isDetecting ? 'Detecting\u2026' : 'Auto-detect face'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setImageSrc(null);
+                        setCrop(undefined);
+                        setCompletedCrop(undefined);
+                        if (fileInputRef.current)
+                          fileInputRef.current.value = '';
+                      }}
+                      className="text-sm text-emerald-600 hover:underline"
+                    >
+                      Choose different photo
+                    </button>
+                  </div>
 
-              {/* Change photo link */}
-              <button
-                onClick={() => {
-                  setImageSrc(null);
-                  setCroppedArea(null);
-                  if (fileInputRef.current) fileInputRef.current.value = '';
-                }}
-                className="text-sm text-emerald-600 hover:underline"
-              >
-                Choose a different photo
-              </button>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Drag corners or edges to resize. Drag inside to reposition.
+                  </p>
+                </div>
+
+                {/* Preview: how it will look on the tree */}
+                <div className="flex flex-col items-center gap-2 shrink-0 pt-1">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tree preview
+                  </span>
+                  <div
+                    className="rounded-xl overflow-hidden ring-2 ring-gray-300 bg-gray-100"
+                    style={{ width: PREVIEW_W, height: PREVIEW_H }}
+                  >
+                    <canvas
+                      ref={previewCanvasRef}
+                      style={{
+                        width: PREVIEW_W,
+                        height: PREVIEW_H,
+                        display: 'block',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
             </>
           )}
 
-          {/* Age input + Set as default */}
+          {/* Age + default */}
           {imageSrc && (
             <div className="space-y-3 pt-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Approximate age on photo <span className="text-red-500">*</span>
+                  Approximate age on photo{' '}
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   min={0}
                   max={150}
                   value={age}
-                  onChange={(e) => { setAge(e.target.value); setError(''); }}
+                  onChange={(e) => {
+                    setAge(e.target.value);
+                    setError('');
+                  }}
                   placeholder="e.g. 25"
                   className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2
                              focus:ring-emerald-500 focus:border-emerald-500 text-sm"
@@ -164,14 +302,14 @@ export function PhotoUploadDialog({
                   className="w-4 h-4 rounded border-gray-300 text-emerald-600
                              focus:ring-emerald-500"
                 />
-                <span className="text-sm text-gray-700">Set as default (show on tree)</span>
+                <span className="text-sm text-gray-700">
+                  Set as default (show on tree)
+                </span>
               </label>
             </div>
           )}
 
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
 
         {/* Footer */}
@@ -182,7 +320,7 @@ export function PhotoUploadDialog({
           <Button
             variant="primary"
             onClick={handleOk}
-            disabled={!imageSrc || !croppedArea || !age || isUploading}
+            disabled={!imageSrc || !completedCrop || !age || isUploading}
             isLoading={isUploading}
           >
             OK

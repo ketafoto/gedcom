@@ -22,6 +22,8 @@ interface TreeCanvasProps {
   viewportRef?: React.RefObject<HTMLDivElement | null>;
   /** Callback when a person node is clicked (re-center tree on them) */
   onPersonClick?: (individualId: number) => void;
+  /** Callback when a person node is double-clicked (open detail page) */
+  onPersonDoubleClick?: (individualId: number) => void;
 }
 
 const nodeTypes: NodeTypes = {
@@ -31,7 +33,7 @@ const nodeTypes: NodeTypes = {
 /**
  * Inner component that uses useReactFlow (must be inside ReactFlowProvider).
  */
-function TreeCanvasInner({ data, viewportRef, onPersonClick }: TreeCanvasProps) {
+function TreeCanvasInner({ data, viewportRef, onPersonClick, onPersonDoubleClick }: TreeCanvasProps) {
   const { fitView } = useReactFlow();
   const layout = useMemo(() => computeTreeLayout(data), [data]);
   const [nodes, setNodes, onNodesChange] = useNodesState(layout.nodes);
@@ -53,6 +55,13 @@ function TreeCanvasInner({ data, viewportRef, onPersonClick }: TreeCanvasProps) 
     [onPersonClick],
   );
 
+  const handleNodeDoubleClick: NodeMouseHandler = useCallback(
+    (_event, node) => {
+      onPersonDoubleClick?.(Number(node.id));
+    },
+    [onPersonDoubleClick],
+  );
+
   return (
     <div ref={viewportRef} className="w-full h-full">
       <ReactFlow
@@ -62,6 +71,7 @@ function TreeCanvasInner({ data, viewportRef, onPersonClick }: TreeCanvasProps) 
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onNodeClick={handleNodeClick}
+        onNodeDoubleClick={handleNodeDoubleClick}
         fitView
         fitViewOptions={{ padding: 0.15 }}
         minZoom={0.1}

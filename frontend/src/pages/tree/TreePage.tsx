@@ -62,13 +62,24 @@ export function TreePage() {
     }
   }, [navigate, id]);
 
-  // Click a node: re-center tree on that person (new focus, redraw with their predecessors/successors)
+  // Single-click: re-center tree on that person, or open detail page if already focused
   const handlePersonClick = useCallback(
     (clickedId: number) => {
-      if (clickedId === individualId) return; // already focused
+      if (clickedId === individualId) {
+        navigate(`/individuals/${clickedId}`);
+        return;
+      }
       navigate(`/individuals/${clickedId}/tree`, { replace: true });
     },
     [navigate, individualId],
+  );
+
+  // Double-click any person: open their detail page
+  const handlePersonDoubleClick = useCallback(
+    (clickedId: number) => {
+      navigate(`/individuals/${clickedId}`);
+    },
+    [navigate],
   );
 
   // Export helpers
@@ -164,6 +175,7 @@ export function TreePage() {
               data={treeData}
               viewportRef={viewportRef}
               onPersonClick={handlePersonClick}
+              onPersonDoubleClick={handlePersonDoubleClick}
             />
           </ReactFlowProvider>
         )}
