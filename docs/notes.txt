@@ -64,6 +64,10 @@ FRONTEND
     - cd ./frontend
     - npm install  ( !!! one time only - to download and install all dependencies, including executables)
     - npm run dev
+   To run backend before the frontend:
+    - uvicorn backend.main:app --host 0.0.0.0 --port 8000   - to start the webserver in production
+      uvicorn backend.main:app --reload                     - to start the webserver in development (127.0.0.1:8000)
+ 
 
 1. Modern frontend development doesn't work by just opening HTML files in a browser.
    You need a development server (http://localhost:3000) because:

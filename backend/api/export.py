@@ -61,10 +61,10 @@ def export_gedcom_endpoint():
             # Add GEDCOM file
             zipf.write(gedcom_path, gedcom_filename)
             
-            # Add media files if they exist
+            # Add media files if they exist (skip dotfiles like .gitkeep)
             if user_info.media_dir.exists():
                 for media_file in user_info.media_dir.rglob('*'):
-                    if media_file.is_file():
+                    if media_file.is_file() and not media_file.name.startswith('.'):
                         arcname = f"media/{media_file.relative_to(user_info.media_dir)}"
                         zipf.write(media_file, arcname)
         
