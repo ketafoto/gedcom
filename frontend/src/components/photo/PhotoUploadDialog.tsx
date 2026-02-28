@@ -7,10 +7,9 @@ import ReactCrop, {
   convertToPixelCrop,
 } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { X, Camera, ScanFace } from 'lucide-react';
+import { X, Camera } from 'lucide-react';
 import { Button } from '../common/Button';
 import { getCroppedBlob } from './cropImage';
-import { detectFace, computeAutoCrop, isFaceDetectorAvailable } from './faceDetect';
 
 const ACCEPTED_FORMATS = '.jpg,.jpeg,.png,.webp,.heic,.heif';
 const PORTRAIT_ASPECT = 4 / 5;
@@ -33,7 +32,6 @@ export function PhotoUploadDialog({
   const [age, setAge] = useState('');
   const [isDefault, setIsDefault] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isDetecting, setIsDetecting] = useState(false);
   const [error, setError] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,29 +70,6 @@ export function PhotoUploadDialog({
     },
     [],
   );
-
-  /* ---- face auto-detect ---- */
-
-  const handleAutoDetect = useCallback(async () => {
-    if (!imgRef.current) return;
-    setIsDetecting(true);
-    setError('');
-    try {
-      const face = await detectFace(imgRef.current);
-      if (!face) {
-        setError('No face detected. Position the crop manually.');
-        return;
-      }
-      const img = imgRef.current;
-      const newCrop = computeAutoCrop(face, img.naturalWidth, img.naturalHeight);
-      setCrop(newCrop);
-      setCompletedCrop(convertToPixelCrop(newCrop, img.width, img.height));
-    } catch {
-      setError('Face detection failed.');
-    } finally {
-      setIsDetecting(false);
-    }
-  }, []);
 
   /* ---- preview canvas ---- */
 
@@ -206,6 +181,17 @@ export function PhotoUploadDialog({
                       aspect={PORTRAIT_ASPECT}
                       keepSelection
                       ruleOfThirds
+                      renderSelectionAddon={() => (
+                        <div
+                          className="absolute inset-0 pointer-events-none flex justify-center"
+                          style={{ paddingTop: '24.9%' }}
+                        >
+                          <div
+                            className="border-2 border-dashed border-white/40 rounded-full"
+                            style={{ width: '57.6%', height: '73%' }}
+                          />
+                        </div>
+                      )}
                     >
                       <img
                         src={imageSrc}
@@ -217,18 +203,6 @@ export function PhotoUploadDialog({
                   </div>
 
                   <div className="flex items-center gap-3 mt-2">
-                    {isFaceDetectorAvailable() && (
-                      <button
-                        onClick={handleAutoDetect}
-                        disabled={isDetecting}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm
-                                   bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100
-                                   disabled:opacity-50 transition-colors"
-                      >
-                        <ScanFace className="w-4 h-4" />
-                        {isDetecting ? 'Detecting\u2026' : 'Auto-detect face'}
-                      </button>
-                    )}
                     <button
                       onClick={() => {
                         setImageSrc(null);
@@ -244,7 +218,8 @@ export function PhotoUploadDialog({
                   </div>
 
                   <p className="text-[11px] text-gray-400 mt-1">
-                    Drag corners or edges to resize. Drag inside to reposition.
+                    Align face to the oval guide for consistent carousel look.
+                    Drag corners/edges to resize, drag inside to reposition.
                   </p>
                 </div>
 
