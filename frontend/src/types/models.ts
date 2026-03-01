@@ -245,7 +245,7 @@ export interface TreeCouple {
 }
 
 export interface TreeData {
-  focus_id: number;
+  focus_id: number | null;
   max_ancestor_depth: number;
   max_descendant_depth: number;
   nodes: TreeNode[];

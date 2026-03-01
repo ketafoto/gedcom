@@ -93,6 +93,7 @@ app.include_router(media.router)
 app.include_router(header.router)
 app.include_router(export.router)
 app.include_router(tree.router)
+app.include_router(tree.full_tree_router)
 
 
 @app.get("/")

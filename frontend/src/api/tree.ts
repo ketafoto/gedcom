@@ -17,4 +17,12 @@ export const treeApi = {
     );
     return response.data;
   },
+
+  /**
+   * Get the full tree with every individual in the database (all connected components).
+   */
+  getFullTree: async (): Promise<TreeData> => {
+    const response = await apiClient.get<TreeData>('/tree/full');
+    return response.data;
+  },
 };

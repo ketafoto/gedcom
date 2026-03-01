@@ -252,7 +252,7 @@ class TreeCouple(BaseModel):
     family_type: Optional[str] = "marriage"
 
 class TreeResponse(BaseModel):
-    focus_id: int
+    focus_id: Optional[int] = None
     max_ancestor_depth: int
     max_descendant_depth: int
     nodes: List[TreeNode]

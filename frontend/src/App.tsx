@@ -21,9 +21,12 @@ import { BulkEditFamiliesPage } from './pages/bulk-edit/BulkEditFamiliesPage';
 import { ExportPage } from './pages/export/ExportPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 
-// Lazy-load TreePage (heavy dependency: @xyflow/react)
+// Lazy-load tree pages (heavy dependency: @xyflow/react)
 const TreePage = lazy(() =>
   import('./pages/tree/TreePage').then((m) => ({ default: m.TreePage }))
+);
+const TreeOverviewPage = lazy(() =>
+  import('./pages/tree/TreeOverviewPage').then((m) => ({ default: m.TreeOverviewPage }))
 );
 
 // Create React Query client
@@ -104,6 +107,7 @@ function App() {
 
               {/* Tree Visualization */}
               <Route path="individuals/:id/tree" element={<Suspense fallback={<div className="flex items-center justify-center h-screen">Loading tree...</div>}><TreePage /></Suspense>} />
+              <Route path="tree" element={<Suspense fallback={<div className="flex items-center justify-center h-screen">Loading tree...</div>}><TreeOverviewPage /></Suspense>} />
 
               {/* Bulk Edit */}
               <Route path="bulk-edit/individuals" element={<BulkEditIndividualsPage />} />

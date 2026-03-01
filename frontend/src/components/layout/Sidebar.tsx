@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Users,
   Heart,
+  GitBranch,
   Table2,
   Download,
   Settings,
@@ -87,6 +88,12 @@ export function Sidebar() {
           to="/families"
           icon={<Heart className="w-5 h-5" />}
           label="Families"
+        />
+
+        <NavItem
+          to="/tree"
+          icon={<GitBranch className="w-5 h-5" />}
+          label="Tree"
         />
 
         <div className="border-t border-gray-200 my-4" />

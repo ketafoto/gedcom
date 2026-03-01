@@ -12,6 +12,7 @@ import database.models as models
 import database.db
 
 router = APIRouter(prefix="/individuals", tags=["tree"])
+full_tree_router = APIRouter(prefix="/tree", tags=["tree"])
 
 MAX_DEPTH_CAP = 20  # Safety limit for BFS traversal
 
@@ -450,6 +451,177 @@ def get_individual_tree(
         focus_id=individual_id,
         max_ancestor_depth=max_ancestor_depth,
         max_descendant_depth=max_descendant_depth,
+        nodes=nodes,
+        edges=edges,
+        couples=couples,
+    )
+
+
+@full_tree_router.get("/full", response_model=schemas.TreeResponse)
+def get_full_tree(db: Session = Depends(database.db.get_db)):
+    """Return a tree containing every individual in the database with all
+    family connections.  Disconnected sub-trees are included side by side.
+
+    Generation numbers are computed per connected component via BFS from an
+    arbitrary root so that the layout algorithm can position them correctly.
+    """
+    from sqlalchemy import text as sql_text
+
+    event_type_rows = db.execute(
+        sql_text("SELECT code, description FROM lookup_event_types")
+    ).fetchall()
+    event_type_map: Dict[str, str] = {row[0]: row[1] for row in event_type_rows}
+
+    all_individuals = (
+        db.query(models.Individual)
+        .options(
+            joinedload(models.Individual.names),
+            joinedload(models.Individual.events),
+            joinedload(models.Individual.media),
+        )
+        .all()
+    )
+    ind_map = {ind.id: ind for ind in all_individuals}
+
+    all_family_members = db.query(models.FamilyMember).all()
+    all_family_children = db.query(models.FamilyChild).all()
+    all_families = (
+        db.query(models.Family)
+        .options(joinedload(models.Family.members), joinedload(models.Family.children))
+        .all()
+    )
+    family_map = {f.id: f for f in all_families}
+
+    # Build adjacency: individual -> set of connected individual ids (via families)
+    adjacency: Dict[int, Set[int]] = {ind_id: set() for ind_id in ind_map}
+    # family_id -> list of parent ids
+    family_parents: Dict[int, List[int]] = {}
+    for fm in all_family_members:
+        family_parents.setdefault(fm.family_id, []).append(fm.individual_id)
+    # family_id -> list of child ids
+    family_child_ids: Dict[int, List[int]] = {}
+    for fc in all_family_children:
+        family_child_ids.setdefault(fc.family_id, []).append(fc.child_id)
+
+    for fid in set(list(family_parents.keys()) + list(family_child_ids.keys())):
+        parents = family_parents.get(fid, [])
+        children = family_child_ids.get(fid, [])
+        members = parents + children
+        for a in members:
+            for b in members:
+                if a != b and a in adjacency and b in adjacency:
+                    adjacency[a].add(b)
+                    adjacency[b].add(a)
+
+    # BFS per connected component to assign generations.
+    # Within each component pick the individual with the earliest birth as root (generation 0).
+    generation: Dict[int, int] = {}
+    visited: Set[int] = set()
+
+    for start_id in ind_map:
+        if start_id in visited:
+            continue
+        # Discover component
+        component: List[int] = []
+        queue = deque([start_id])
+        visited.add(start_id)
+        while queue:
+            cur = queue.popleft()
+            component.append(cur)
+            for nb in adjacency.get(cur, set()):
+                if nb not in visited:
+                    visited.add(nb)
+                    queue.append(nb)
+
+        # Pick root: choose eldest (earliest birth) in the component
+        root_id = min(component, key=lambda i: _get_birth_sort_key(ind_map[i]))
+
+        # BFS from root using parent-child semantics for generation
+        gen_queue: deque[Tuple[int, int]] = deque([(root_id, 0)])
+        gen_visited: Set[int] = {root_id}
+        generation[root_id] = 0
+
+        while gen_queue:
+            cur_id, cur_gen = gen_queue.popleft()
+
+            # Children of cur_id: families where cur_id is parent, get children
+            for fm in all_family_members:
+                if fm.individual_id == cur_id:
+                    fid = fm.family_id
+                    for cid in family_child_ids.get(fid, []):
+                        if cid not in gen_visited and cid in ind_map:
+                            generation[cid] = cur_gen + 1
+                            gen_visited.add(cid)
+                            gen_queue.append((cid, cur_gen + 1))
+                    # Also tag co-parents at same generation
+                    for pid in family_parents.get(fid, []):
+                        if pid != cur_id and pid not in gen_visited and pid in ind_map:
+                            generation[pid] = cur_gen
+                            gen_visited.add(pid)
+                            gen_queue.append((pid, cur_gen))
+
+            # Parents of cur_id: families where cur_id is child, get parents
+            for fc in all_family_children:
+                if fc.child_id == cur_id:
+                    fid = fc.family_id
+                    for pid in family_parents.get(fid, []):
+                        if pid not in gen_visited and pid in ind_map:
+                            generation[pid] = cur_gen - 1
+                            gen_visited.add(pid)
+                            gen_queue.append((pid, cur_gen - 1))
+
+        # Assign generation 0 to any remaining unvisited in component
+        for cid in component:
+            if cid not in generation:
+                generation[cid] = 0
+
+    # Build edges and couples
+    edges: List[schemas.TreeEdge] = []
+    couples: List[schemas.TreeCouple] = []
+
+    for family in all_families:
+        family_type = family.family_type or "marriage"
+        relationship = "biological" if family_type == "marriage" else "non-biological"
+
+        partner_ids = [m.individual_id for m in family.members]
+        couples.append(
+            schemas.TreeCouple(
+                family_id=family.id,
+                partner_ids=partner_ids,
+                marriage_date=str(family.marriage_date) if family.marriage_date else None,
+                marriage_date_approx=family.marriage_date_approx,
+                divorce_date=str(family.divorce_date) if family.divorce_date else None,
+                family_type=family_type,
+            )
+        )
+
+        child_ids = [fc.child_id for fc in family.children]
+        for parent_id in partner_ids:
+            for child_id in child_ids:
+                edges.append(
+                    schemas.TreeEdge(
+                        parent_id=parent_id,
+                        child_id=child_id,
+                        family_id=family.id,
+                        relationship=relationship,
+                    )
+                )
+
+    # Build nodes
+    nodes: List[schemas.TreeNode] = []
+    for ind in all_individuals:
+        gen = generation.get(ind.id, 0)
+        nodes.append(_build_node(ind, gen, event_type_map))
+
+    nodes.sort(key=lambda n: (
+        n.generation,
+        (0, n.birth_date or "") if n.birth_date else (0, n.birth_date_approx or "") if n.birth_date_approx else (1, "9999"),
+    ))
+
+    return schemas.TreeResponse(
+        focus_id=None,
+        max_ancestor_depth=0,
+        max_descendant_depth=0,
         nodes=nodes,
         edges=edges,
         couples=couples,
