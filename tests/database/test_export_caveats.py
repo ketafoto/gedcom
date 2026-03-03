@@ -21,7 +21,7 @@ from tests.backend.db_utils import DatabaseUtils
 class TestExportCaveats:
     """Test suite for GEDCOM export edge cases."""
 
-    def test_date_format_mutual_exclusivity(self, test_data_dir, test_user, log_test_step):
+    def test_date_format_mutual_exclusivity(self, test_data_dir, test_owner, log_test_step):
         """
         Test that updating birth_date clears birth_date_approx (and vice versa).
 
@@ -34,25 +34,25 @@ class TestExportCaveats:
         """
         log_test_step("Setting up test database")
 
-        # Paths for test data (golden files in test_data_dir, outputs in test_user dir)
+        # Paths for test data (golden files in test_data_dir, outputs in test_owner dir)
         input_ged    = test_data_dir / "date.inp.ged"
         expected_ged = test_data_dir / "date.out.ged"
-        actual_ged   = test_user.user_dir / "date.out.test"
+        actual_ged   = test_owner.owner_dir / "date.out.test"
 
         assert input_ged.exists(), f"Input file not found: {input_ged}"
         assert expected_ged.exists(), f"Expected file not found: {expected_ged}"
 
         database.db.reset_engine()
-        database.db.init_db_once(test_user)
+        database.db.init_db_once(test_owner)
 
         # Step 1: Import input GEDCOM
         log_test_step("Importing input GEDCOM")
-        success = import_gedcom(input_ged, test_user.db_file)
+        success = import_gedcom(input_ged, test_owner.db_file)
         assert success, "Import failed"
 
         # Step 2: Find individual by GEDCOM ID
         log_test_step("Finding individual I1")
-        db_utils = DatabaseUtils(test_user.db_file)
+        db_utils = DatabaseUtils(test_owner.db_file)
         row = db_utils.execute_query_single(
             "SELECT id FROM main_individuals WHERE gedcom_id = ?", ("I1",)
         )
@@ -80,7 +80,7 @@ class TestExportCaveats:
 
         # Step 4: Export to actual file
         log_test_step("Exporting database to GEDCOM")
-        success = export_gedcom(test_user.db_file, actual_ged)
+        success = export_gedcom(test_owner.db_file, actual_ged)
         assert success, "Export failed"
 
         # Step 5: Compare actual to expected

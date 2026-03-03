@@ -1,5 +1,6 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { LoadingPage } from './Spinner';
+import { isPublicApp } from '../../config/appMode';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -7,13 +8,16 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
 
   if (isLoading) {
     return <LoadingPage />;
   }
 
-  // Authentication is disabled - always allow access
+  if (isPublicApp || !isAuthenticated) {
+    return null;
+  }
+
   return <>{children}</>;
 }
 

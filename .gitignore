@@ -3,3 +3,15 @@ venv-linux
 venv-win
 node_modules
 /test_gedcom.db
+datasets/**/*.jpg
+datasets/**/*.png
+datasets/**/*.jpeg
+datasets/**/*.gif
+datasets/**/*.bmp
+datasets/**/*.tiff
+datasets/**/*.ico
+datasets/**/*.webp
+datasets/**/*.svg
+datasets/**/*.heic
+datasets/**/*.heif
+datasets/**/*.heif-srgb

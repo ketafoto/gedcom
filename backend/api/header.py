@@ -27,6 +27,7 @@ from typing import Optional
 from .. import schemas
 import database.models
 import database.db
+from .auth import require_admin
 
 router = APIRouter(prefix="/header", tags=["header"])
 
@@ -89,6 +90,7 @@ def get_header(db: Session = Depends(database.db.get_db)):
 @router.put("", response_model=schemas.Header)
 def update_header(
     header_update: schemas.HeaderUpdate,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db)
 ):
     """Update GEDCOM header and submitter information.
@@ -127,6 +129,7 @@ def update_header(
 @router.put("/submitter", response_model=schemas.Header)
 def update_submitter(
     submitter: SubmitterUpdate,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db)
 ):
     """Update submitter information only.

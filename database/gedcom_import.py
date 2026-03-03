@@ -6,14 +6,14 @@ GEDCOM 5.5.1 Import Script
 Imports GEDCOM 5.5.1 format file into genealogy database using backend models.
 
 Usage:
-    python -m database.gedcom_import [--user USERNAME] [input_file]
+    python -m database.gedcom_import [--owner OWNER_ID] [input_file]
 
-    --user USERNAME : Import for specific user (default: inovoseltsev)
+    --owner OWNER_ID: Import for specific owner (default: inovoseltsev)
     input_file      : Path to GEDCOM file (default: user's data.ged)
 
 Examples:
-    python -m database.gedcom_import --user inovoseltsev
-    python -m database.gedcom_import --user john path/to/family.ged
+    python -m database.gedcom_import --owner inovoseltsev
+    python -m database.gedcom_import --owner john path/to/family.ged
 """
 
 import sys
@@ -30,7 +30,7 @@ from database.models import (
     Individual, IndividualName, Family, FamilyMember, FamilyChild,
     Event, Media, Header
 )
-from database.user_info import UserInfo
+from database.owner_info import OwnerInfo
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from backend.api.api_utils import generate_family_note
@@ -722,44 +722,44 @@ def import_gedcom(gedcom_file: Path, db_file: Path) -> bool:
             db_engine.dispose()
         return False
 
-def import_for_user(username: Optional[str] = None, gedcom_file: Optional[str] = None) -> bool:
+def import_for_owner(owner_id: Optional[str] = None, gedcom_file: Optional[str] = None) -> bool:
     """
-    Import GEDCOM file for a specific user.
+    Import GEDCOM file for a specific owner.
 
     Args:
-        username: Username to import for. Uses default user if None.
+        owner_id: Owner id to import for. Uses default owner if None.
         gedcom_file: Path to GEDCOM file. Uses user's data.ged if None.
 
     Returns:
         True if import succeeded, False otherwise.
     """
-    user_info = UserInfo(username=username, gedcom_file=gedcom_file)
+    owner_info = OwnerInfo(owner_id=owner_id, gedcom_file=gedcom_file)
 
-    print(f"Importing for user: {user_info.username}")
-    print(f"   GEDCOM file: {user_info.gedcom_file}")
-    print(f"   Database: {user_info.db_file}")
+    print(f"Importing for owner: {owner_info.owner_id}")
+    print(f"   GEDCOM file: {owner_info.gedcom_file}")
+    print(f"   Database: {owner_info.db_file}")
 
-    # user_info.gedcom_file and db_file are always Path after __post_init__
-    return import_gedcom(Path(user_info.gedcom_file), Path(user_info.db_file))  # type: ignore[arg-type]
+    # owner_info.gedcom_file and db_file are always Path after __post_init__
+    return import_gedcom(Path(owner_info.gedcom_file), Path(owner_info.db_file))  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":
-    # Get default username for help text
-    default_user = UserInfo()
+    # Get default owner id for help text
+    default_owner = OwnerInfo()
 
     parser = argparse.ArgumentParser(
-        description="Import GEDCOM 5.5.1 file into user's genealogy database"
+        description="Import GEDCOM 5.5.1 file into owner's genealogy database"
     )
     parser.add_argument(
-        "--user", "-u", default=None,
-        help=f"Username to import for (default: {default_user.username})"
+        "--owner", "-o", default=None,
+        help=f"Owner id to import for (default: {default_owner.owner_id})"
     )
     parser.add_argument(
         "input_file", nargs="?", default=None,
-        help="Path to GEDCOM file (default: user's data.ged)"
+        help="Path to GEDCOM file (default: owner's data.ged)"
     )
 
     args = parser.parse_args()
 
-    if not import_for_user(args.user, args.input_file):
+    if not import_for_owner(args.owner, args.input_file):
         sys.exit(1)

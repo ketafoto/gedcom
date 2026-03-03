@@ -7,12 +7,14 @@ from .. import schemas
 import database.models
 import database.db
 from .api_utils import generate_gedcom_id, generate_family_note
+from .auth import require_admin
 
 router = APIRouter(prefix="/families", tags=["families"])
 
 @router.post("", response_model=schemas.Family)
 def create_family(
     family: schemas.FamilyCreate,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db)
 ):
     """Create a new family."""
@@ -103,6 +105,7 @@ def read_family(
 def update_family(
     family_id: int,
     family_update: schemas.FamilyUpdate,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db)
 ):
     """Update a family."""
@@ -165,6 +168,7 @@ def update_family(
 @router.delete("/{family_id}")
 def delete_family(
     family_id: int,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db)
 ):
     """Delete a family."""

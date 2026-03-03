@@ -6,14 +6,14 @@ GEDCOM 5.5.1 Export Script
 Exports genealogy database to GEDCOM 5.5.1 format using backend models.
 
 Usage:
-    python -m database.gedcom_export [--user USERNAME] [output_file]
+    python -m database.gedcom_export [--owner OWNER_ID] [output_file]
 
-    --user USERNAME : Export for specific user (default: inovoseltsev)
+    --owner OWNER_ID: Export for specific owner (default: inovoseltsev)
     output_file     : Path to output GEDCOM file (default: user's data.ged)
 
 Examples:
-    python -m database.gedcom_export --user inovoseltsev
-    python -m database.gedcom_export --user john path/to/output.ged
+    python -m database.gedcom_export --owner inovoseltsev
+    python -m database.gedcom_export --owner john path/to/output.ged
 """
 
 import sys
@@ -24,7 +24,7 @@ from typing import Optional
 
 import database.db
 from database.models import Individual, Family, Event, Media, Header
-from database.user_info import UserInfo, PROJECT_ROOT
+from database.owner_info import OwnerInfo, PROJECT_ROOT
 from sqlalchemy.orm import Session, joinedload
 
 
@@ -355,43 +355,43 @@ def export_gedcom(db_file: Path, output_file: Path) -> bool:
             db_engine.dispose()
         return False
 
-def export_for_user(username: Optional[str] = None, output_file: Optional[str] = None) -> bool:
+def export_for_owner(owner_id: Optional[str] = None, output_file: Optional[str] = None) -> bool:
     """
-    Export GEDCOM file for a specific user.
+    Export GEDCOM file for a specific owner.
 
     Args:
-        username: Username to export for. Uses default user if None.
+        owner_id: Owner id to export for. Uses default owner if None.
         output_file: Path to output GEDCOM file. Uses user's data.ged if None.
 
     Returns:
         True if export succeeded, False otherwise.
     """
-    user_info = UserInfo(username=username, gedcom_file=output_file)
+    owner_info = OwnerInfo(owner_id=owner_id, gedcom_file=output_file)
 
-    print(f"📁 Exporting for user: {user_info.username}")
-    print(f"   Database: {user_info.db_file}")
-    print(f"   GEDCOM file: {user_info.gedcom_file}")
+    print(f"📁 Exporting for owner: {owner_info.owner_id}")
+    print(f"   Database: {owner_info.db_file}")
+    print(f"   GEDCOM file: {owner_info.gedcom_file}")
 
-    return export_gedcom(user_info.db_file, user_info.gedcom_file)
+    return export_gedcom(owner_info.db_file, owner_info.gedcom_file)
 
 
 if __name__ == "__main__":
-    # Get default username for help text
-    default_user = UserInfo()
+    # Get default owner id for help text
+    default_owner = OwnerInfo()
 
     parser = argparse.ArgumentParser(
-        description="Export user's genealogy database to GEDCOM 5.5.1 file"
+        description="Export owner's genealogy database to GEDCOM 5.5.1 file"
     )
     parser.add_argument(
-        "--user", "-u", default=None,
-        help=f"Username to export for (default: {default_user.username})"
+        "--owner", "-o", default=None,
+        help=f"Owner id to export for (default: {default_owner.owner_id})"
     )
     parser.add_argument(
         "output_file", nargs="?", default=None,
-        help="Path to output GEDCOM file (default: user's data.ged)"
+        help="Path to output GEDCOM file (default: owner's data.ged)"
     )
 
     args = parser.parse_args()
 
-    if not export_for_user(args.user, args.output_file):
+    if not export_for_owner(args.owner, args.output_file):
         sys.exit(1)

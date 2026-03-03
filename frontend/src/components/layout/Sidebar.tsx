@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Users,
+  User,
   Heart,
   GitBranch,
   Table2,
@@ -10,6 +10,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { useState } from 'react';
+import { isPublicApp } from '../../config/appMode';
 
 interface NavItemProps {
   to: string;
@@ -66,6 +67,20 @@ function NavGroup({ icon, label, children }: NavGroupProps) {
 }
 
 export function Sidebar() {
+  if (isPublicApp) {
+    return (
+      <aside className="w-64 bg-white border-r border-gray-200 min-h-screen p-4">
+        <nav className="space-y-1">
+          <NavItem
+            to="/tree"
+            icon={<GitBranch className="w-5 h-5" />}
+            label="Tree"
+          />
+        </nav>
+      </aside>
+    );
+  }
+
   return (
     <aside className="w-64 bg-white border-r border-gray-200 min-h-screen p-4">
       <nav className="space-y-1">
@@ -79,7 +94,7 @@ export function Sidebar() {
         <div className="pt-2">
           <NavItem
             to="/individuals"
-            icon={<Users className="w-5 h-5" />}
+            icon={<User className="w-5 h-5" />}
             label="Individuals"
           />
         </div>

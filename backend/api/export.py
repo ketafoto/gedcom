@@ -1,52 +1,52 @@
 """
 Export API endpoints.
 
-Provides endpoints to export the user's genealogy database to GEDCOM format.
+Provides endpoints to export the owner's genealogy database to GEDCOM format.
 """
 import zipfile
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 import shutil
 
 from database import db
-from database.user_info import UserInfo
+from database.owner_info import OwnerInfo
 from database.gedcom_export import export_gedcom
-from backend.api.auth import get_current_user
+from backend.api.auth import get_current_viewer, require_admin
 
 router = APIRouter(prefix="/export", tags=["Export"])
 
 
 @router.post("/gedcom")
-def export_gedcom_endpoint():
+def export_gedcom_endpoint(_admin: dict = Depends(require_admin)):
     """
-    Export the user's database to GEDCOM format with media files.
+    Export the owner's database to GEDCOM format with media files.
     
     Returns a ZIP archive containing:
-    - <username>_export.ged - GEDCOM 5.5.1 file
+    - <viewer_id>_export.ged - GEDCOM 5.5.1 file
     - media/ - All associated media files
     """
-    user = get_current_user()
+    viewer = get_current_viewer()
     
-    # Get user's database info
-    user_info = db.get_current_user()
-    if not user_info:
-        # Initialize for this user
-        user_info = UserInfo(username=user["username"])
-        db.init_db_once(user_info)
+    # Resolve active owner info
+    owner = db.get_active_owner()
+    if not owner:
+        # Local admin viewer maps to same-named owner by default.
+        owner = OwnerInfo(owner_id=viewer["viewer_id"])
+        db.init_db_once(owner)
     
     # Create temporary directory for export
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         
         # Generate GEDCOM file
-        gedcom_filename = f"{user['username']}_export.ged"
+        gedcom_filename = f"{viewer['viewer_id']}_export.ged"
         gedcom_path = temp_path / gedcom_filename
         
         try:
-            success = export_gedcom(user_info.db_file, gedcom_path)
+            success = export_gedcom(owner.db_file, gedcom_path)
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to generate GEDCOM")
         except Exception as e:
@@ -54,7 +54,7 @@ def export_gedcom_endpoint():
         
         # Create ZIP archive
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        zip_filename = f"{user['username']}_export_{timestamp}.zip"
+        zip_filename = f"{viewer['viewer_id']}_export_{timestamp}.zip"
         zip_path = temp_path / zip_filename
         
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -62,10 +62,10 @@ def export_gedcom_endpoint():
             zipf.write(gedcom_path, gedcom_filename)
             
             # Add media files if they exist (skip dotfiles like .gitkeep)
-            if user_info.media_dir.exists():
-                for media_file in user_info.media_dir.rglob('*'):
+            if owner.media_dir.exists():
+                for media_file in owner.media_dir.rglob('*'):
                     if media_file.is_file() and not media_file.name.startswith('.'):
-                        arcname = f"media/{media_file.relative_to(user_info.media_dir)}"
+                        arcname = f"media/{media_file.relative_to(owner.media_dir)}"
                         zipf.write(media_file, arcname)
         
         # Copy ZIP to a more permanent temp location (will be cleaned up by system)
@@ -81,18 +81,17 @@ def export_gedcom_endpoint():
 
 
 @router.post("/gedcom-raw")
-def export_gedcom_raw_endpoint():
+def export_gedcom_raw_endpoint(_admin: dict = Depends(require_admin)):
     """
     Export the user's database to a raw GEDCOM file (no media, no ZIP).
     """
-    user = get_current_user()
+    viewer = get_current_viewer()
 
-    # Get user's database info
-    user_info = db.get_current_user()
-    if not user_info:
-        # Initialize for this user
-        user_info = UserInfo(username=user["username"])
-        db.init_db_once(user_info)
+    # Resolve active owner info
+    owner = db.get_active_owner()
+    if not owner:
+        owner = OwnerInfo(owner_id=viewer["viewer_id"])
+        db.init_db_once(owner)
 
     # Create temporary directory for export
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -100,11 +99,11 @@ def export_gedcom_raw_endpoint():
 
         # Generate GEDCOM file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        gedcom_filename = f"{user['username']}_export_{timestamp}.ged"
+        gedcom_filename = f"{viewer['viewer_id']}_export_{timestamp}.ged"
         gedcom_path = temp_path / gedcom_filename
 
         try:
-            success = export_gedcom(user_info.db_file, gedcom_path)
+            success = export_gedcom(owner.db_file, gedcom_path)
             if not success:
                 raise HTTPException(status_code=500, detail="Failed to generate GEDCOM")
         except Exception as e:

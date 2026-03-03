@@ -160,10 +160,13 @@ export interface LookupType {
   description: string;
 }
 
-// ==================== Auth Types ====================
-export interface User {
+// ==================== Viewer Types ====================
+// Viewer = browser/session identity. A viewer may get edit rights in future.
+// Owner = backend data holder under datasets/<owner>/.
+export interface Viewer {
   id: number;
-  username: string;
+  viewer_id: string;
+  role?: 'anonymous' | 'admin' | 'editor';
   email?: string;
   is_active: boolean;
   is_admin: boolean;
@@ -172,14 +175,14 @@ export interface User {
 }
 
 export interface LoginRequest {
-  username: string;
+  viewer_id: string;
   password: string;
 }
 
 export interface LoginResponse {
   access_token: string;
   token_type: string;
-  user: User;
+  viewer: Viewer;
 }
 
 export interface SetPasswordRequest {
@@ -188,13 +191,13 @@ export interface SetPasswordRequest {
 }
 
 // ==================== Admin Types ====================
-export interface CreateUserRequest {
-  username: string;
+export interface CreateViewerRequest {
+  viewer_id: string;
   email?: string;
 }
 
-export interface CreateUserResponse {
-  user: User;
+export interface CreateViewerResponse {
+  viewer: Viewer;
   invitation_link: string;
 }
 

@@ -30,7 +30,7 @@
 
 Add an interactive, visual family tree to the Genealogy Database application.
 The tree is centered on a chosen individual (the **focus person**) and displays
-ancestors upward and descendants downward. Users can control how many
+ancestors upward and descendants downward. Viewers can control how many
 generations are shown with a slider, hover over any person to read a
 chronological story of their life events, and export the result as a
 high-resolution PNG or JPEG suitable for printing on A4 landscape paper.

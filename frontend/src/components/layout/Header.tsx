@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import { LogOut, User, TreeDeciduous } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { isPublicApp } from '../../config/appMode';
 
 export function Header() {
-  const { user, logout } = useAuth();
+  const { viewer, logout } = useAuth();
 
   const handleLogout = async () => {
     await logout();
@@ -21,11 +22,11 @@ export function Header() {
         </Link>
 
         {/* User Menu */}
-        {user && (
+        {!isPublicApp && viewer && (
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-gray-600">
               <User className="w-5 h-5" />
-              <span className="font-medium">{user.username}</span>
+              <span className="font-medium">{viewer.viewer_id}</span>
             </div>
             <button
               onClick={handleLogout}

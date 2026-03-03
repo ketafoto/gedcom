@@ -1,13 +1,13 @@
 import apiClient from './client';
-import type { User } from '../types/models';
+import type { Viewer } from '../types/models';
 
 // Authentication is disabled - only the /me endpoint is used
 export const authApi = {
   /**
-   * Get current user info
+   * Get current viewer info
    */
-  me: async (): Promise<User> => {
-    const response = await apiClient.get<User>('/auth/me');
+  me: async (): Promise<Viewer> => {
+    const response = await apiClient.get<Viewer>('/auth/me');
     return response.data;
   },
 };

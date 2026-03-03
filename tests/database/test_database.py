@@ -2,7 +2,7 @@
 # pytest tests/database/test_database.py::TestImportExportGedcom -s
 #
 # This test validates the GEDCOM import/export roundtrip.
-# It uses test data copied from users/inovoseltsev/ folder.
+# It uses test data copied from datasets/inovoseltsev/ folder.
 #
 
 import pytest
@@ -23,22 +23,22 @@ class TestImportExportGedcom:
         """Test that import->export->import->export produces consistent results."""
         log_test_step("Starting roundtrip consistency test")
 
-        # test_db fixture returns UserInfo for test user
-        test_user = test_db
+        # test_db fixture returns OwnerInfo for test owner
+        test_owner = test_db
 
         # Reset engine to ensure clean state
         database.db.reset_engine()
 
-        # Check if source GEDCOM exists (from users/inovoseltsev/)
+        # Check if source GEDCOM exists (from datasets/inovoseltsev/)
         if not SOURCE_GEDCOM.exists():
             pytest.skip(f"Source GEDCOM file not found: {SOURCE_GEDCOM}")
 
-        if not test_user.gedcom_file.exists():
-            pytest.skip(f"Test GEDCOM file not found: {test_user.gedcom_file}")
+        if not test_owner.gedcom_file.exists():
+            pytest.skip(f"Test GEDCOM file not found: {test_owner.gedcom_file}")
 
         # Step 1: Import
         log_test_step("Step 1: Importing GEDCOM")
-        success1 = import_gedcom(test_user.gedcom_file, test_user.db_file)
+        success1 = import_gedcom(test_owner.gedcom_file, test_owner.db_file)
 
         # Check for unsupported tags (they print WARNING to stdout)
         log_debug("Import completed, checking for warnings...")
@@ -47,7 +47,7 @@ class TestImportExportGedcom:
         log_test_step("Import 1 successful")
 
         # Get counts after first import
-        conn = sqlite3.connect(str(test_user.db_file))
+        conn = sqlite3.connect(str(test_owner.db_file))
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM main_individuals")
         count1_individuals = cursor.fetchone()[0]
@@ -62,23 +62,23 @@ class TestImportExportGedcom:
         # Test DB backup after the first import
         # Note: backup files are named data.sqlite.TIMESTAMP in the test user directory
         log_test_step("Verifying database backup was created after the first import")
-        backup_files = list(test_user.user_dir.glob("data.sqlite.*"))
+        backup_files = list(test_owner.owner_dir.glob("data.sqlite.*"))
         assert len(backup_files) == 1, f"Expected exactly one backup file after the first import, found {len(backup_files)}"
         log_test_step(f"Backup file created: {backup_files[0].name}")
 
         # Step 2: Export
         log_test_step("Step 2: Exporting to GEDCOM")
-        export_file1 = test_user.user_dir / "test_gedcom_export1.txt"
-        success2 = export_gedcom(test_user.db_file, export_file1)
+        export_file1 = test_owner.owner_dir / "test_gedcom_export1.txt"
+        success2 = export_gedcom(test_owner.db_file, export_file1)
         assert success2, "Export failed"
         log_test_step("Export 1 successful")
 
         # Step 3: Delete database, recreate it and re-import from exported file
         log_test_step("Step 3: Deleting database and re-importing from exported file")
         database.db.reset_engine()  # Reset engine to release file lock before deletion
-        test_user.db_file.unlink()
+        test_owner.db_file.unlink()
 
-        success3 = import_gedcom(export_file1, test_user.db_file)
+        success3 = import_gedcom(export_file1, test_owner.db_file)
         assert success3, "Second import failed"
         log_test_step("Import 2 successful")
 
@@ -88,14 +88,14 @@ class TestImportExportGedcom:
 
         # Step 4: Export again
         log_test_step("Step 4: Exporting again")
-        export_file2 = test_user.user_dir / "test_gedcom_export2.txt"
-        success4 = export_gedcom(test_user.db_file, export_file2)
+        export_file2 = test_owner.owner_dir / "test_gedcom_export2.txt"
+        success4 = export_gedcom(test_owner.db_file, export_file2)
         assert success4, "Second export failed"
         log_test_step("Export 2 successful")
 
         # Step 5: Verify counts remain consistent
         log_test_step("Step 5: Verifying consistency")
-        conn = sqlite3.connect(str(test_user.db_file))
+        conn = sqlite3.connect(str(test_owner.db_file))
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM main_individuals")
         count2_individuals = cursor.fetchone()[0]
@@ -123,7 +123,7 @@ class TestImportExportGedcom:
         # This ensures no data is lost or reordered during import/export
         log_test_step("Step 7: Verifying original GEDCOM matches exported GEDCOM")
 
-        with open(test_user.gedcom_file, 'r', encoding='utf-8') as f:
+        with open(test_owner.gedcom_file, 'r', encoding='utf-8') as f:
             original_text = normalize_gedcom_text(f.read(), skip_dynamic_fields=True)
         export1_normalized = normalize_gedcom_text(export1_text, skip_dynamic_fields=True)
 
@@ -147,7 +147,7 @@ class TestImportExportGedcom:
             diff_report = "\n".join(differences)
             pytest.fail(
                 f"Original GEDCOM and exported GEDCOM differ!\n"
-                f"Original file: {test_user.gedcom_file}\n"
+                f"Original file: {test_owner.gedcom_file}\n"
                 f"Exported file: {export_file1}\n"
                 f"First differences:\n{diff_report}"
             )

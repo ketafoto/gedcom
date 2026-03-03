@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, Edit2, Trash2, Heart, Users } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Heart, User } from 'lucide-react';
 import { familiesApi } from '../../api/families';
 import { individualsApi } from '../../api/individuals';
 import { Button } from '../../components/common/Button';
@@ -196,7 +196,7 @@ export function FamiliesListPage() {
                   {/* Children */}
                   {childrenCount > 0 && (
                     <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
-                      <Users className="w-4 h-4" />
+                      <User className="w-4 h-4" />
                       <span>{childrenCount} {childrenCount === 1 ? 'child' : 'children'}</span>
                     </div>
                   )}

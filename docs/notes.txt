@@ -173,5 +173,9 @@ Frontend (Vite + React + TailWind):
     3. http://localhost:3000 in Browser
 
 2.
-Use separate databases for different users:
-change DEFAULT_USERNAME in backend/api/auth.py
+Use separate databases for different datasets:
+change DEFAULT_OWNER_ID in backend/api/auth.py
+
+
+
+

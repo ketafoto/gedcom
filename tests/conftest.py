@@ -4,8 +4,8 @@
 # Test Configuration:
 # - Each test module gets its own temp folder: tests/<module_path>/temp/
 #   e.g., tests/backend/test_backend.py → tests/backend/test_backend/temp/
-# - The default user (inovoseltsev) is used, mirroring the real users/ structure
-# - The test GEDCOM data is copied from users/inovoseltsev/data.ged
+# - The default owner (inovoseltsev) is used, mirroring the real datasets/ structure
+# - The test GEDCOM data is copied from datasets/inovoseltsev/data.ged
 # - All test data is cleaned up after successful test runs
 #
 # To invoke tests use:
@@ -22,7 +22,7 @@ import pytest
 import subprocess
 
 from pathlib import Path
-from database.user_info import UserInfo
+from database.owner_info import OwnerInfo
 
 
 # ==================== Test Configuration ====================
@@ -31,12 +31,12 @@ PROJECT_ROOT_DIR = Path(__file__).parent.parent
 TESTS_DIR = Path(__file__).parent
 
 # Source data: use inovoseltsev's GEDCOM file as test data
-SOURCE_GEDCOM = PROJECT_ROOT_DIR / "users" / "inovoseltsev" / "data.ged"
+SOURCE_GEDCOM = PROJECT_ROOT_DIR / "datasets" / "inovoseltsev" / "data.ged"
 
 
-def get_test_user(test_module_path: Path) -> UserInfo:
+def get_test_owner(test_module_path: Path) -> OwnerInfo:
     """
-    Create UserInfo for a specific test module.
+    Create OwnerInfo for a specific test module.
 
     Each test module gets its own temp folder based on the module name:
     - tests/backend/test_backend.py → tests/backend/test_backend/temp/
@@ -46,13 +46,13 @@ def get_test_user(test_module_path: Path) -> UserInfo:
         test_module_path: Path to the test module file (e.g., Path(__file__))
 
     Returns:
-        UserInfo with base_dir pointing to the module's temp folder
+        OwnerInfo with base_dir pointing to the module's temp folder
     """
     # Get the module name without .py extension
     module_name = test_module_path.stem  # e.g., "test_backend"
     # Create temp folder next to the test module
     temp_dir = test_module_path.parent / module_name / "temp"
-    return UserInfo(base_dir=temp_dir)
+    return OwnerInfo(base_dir=temp_dir)
 
 # Shared state for logging (module-level so it's accessible from all fixtures)
 _test_state = {"header_printed": False}
@@ -171,19 +171,19 @@ def test_data_dir(request) -> Path:
 
 
 @pytest.fixture
-def test_user(request) -> UserInfo:
+def test_owner(request) -> OwnerInfo:
     """
-    Fixture providing a UserInfo for the test module.
+    Fixture providing an OwnerInfo for the test module.
 
     Usage:
-        def test_something(test_user):
-            db_file = test_user.db_file
+        def test_something(test_owner):
+            db_file = test_owner.db_file
             ...
 
-    Pattern: tests/<path>/test_foo.py → UserInfo with base_dir at test_foo/temp/
+    Pattern: tests/<path>/test_foo.py → OwnerInfo with base_dir at test_foo/temp/
     """
     test_module_path = Path(request.fspath)
-    return get_test_user(test_module_path)
+    return get_test_owner(test_module_path)
 
 
 @pytest.fixture
@@ -191,9 +191,9 @@ def test_db(request, is_debug):
     """
     Fixture for database setup/teardown.
 
-    - Creates test user directory based on test module path
+    - Creates test owner directory based on test module path
       e.g., tests/database/test_database/temp/inovoseltsev/
-    - Copies GEDCOM file from users/inovoseltsev/data.ged
+    - Copies GEDCOM file from datasets/inovoseltsev/data.ged
     - Creates test database using init_db_once()
     - Does NOT clean up here - cleanup only happens in pytest_sessionfinish
       when ALL tests pass (to preserve files for debugging failed tests)
@@ -203,18 +203,18 @@ def test_db(request, is_debug):
     # Reset any existing engine state
     reset_engine()
 
-    # Create test UserInfo with module-specific temp directory
+    # Create test OwnerInfo with module-specific temp directory
     test_module_path = Path(request.fspath)
-    test_user = get_test_user(test_module_path)
+    test_owner = get_test_owner(test_module_path)
 
     # Copy source GEDCOM file if it exists and test file doesn't
-    if SOURCE_GEDCOM.exists() and not test_user.gedcom_file.exists():
-        shutil.copy2(SOURCE_GEDCOM, test_user.gedcom_file)
+    if SOURCE_GEDCOM.exists() and not test_owner.gedcom_file.exists():
+        shutil.copy2(SOURCE_GEDCOM, test_owner.gedcom_file)
 
     # Initialize the database
-    init_db_once(test_user)
+    init_db_once(test_owner)
 
-    yield test_user
+    yield test_owner
 
     # Reset engine after test (but don't delete files - that's done in session finish)
     reset_engine()

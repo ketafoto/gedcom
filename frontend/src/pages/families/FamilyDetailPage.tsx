@@ -7,7 +7,7 @@ import {
   Calendar,
   MapPin,
   Heart,
-  Users,
+  User,
   Image,
   Plus,
 } from 'lucide-react';
@@ -185,7 +185,7 @@ export function FamilyDetailPage() {
           >
             {family.children.length === 0 ? (
               <div className="text-center py-6 text-gray-500">
-                <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <User className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                 <p>No children recorded</p>
               </div>
             ) : (

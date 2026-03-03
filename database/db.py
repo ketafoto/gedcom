@@ -1,54 +1,54 @@
-# Create SqlAlchemy session object connected to the user's SQLite database.
+# Create SqlAlchemy session object connected to the owner's SQLite database.
 # We use Python generator to implement it. FastAPI will use this session to access the database file.
 #
-# Multi-user support:
-# - Each user has their own database under users/<username>/data.sqlite
-# - Use init_db_once(user_info) to initialize for a specific user
+# Owner support:
+# - Each owner has their own database under datasets/<owner>/data.sqlite
+# - Use init_db_once(owner_info) to initialize for a specific owner
 #
 from typing import Optional, Union
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from .models import Base
-from .user_info import UserInfo
+from .owner_info import OwnerInfo
 
-# Current active user info
-_current_user_info: Optional[UserInfo] = None
+# Current active owner info
+_active_owner_info: Optional[OwnerInfo] = None
 
 engine        = None
 SessionLocal  = None
 
 
-def init_db_once(user_info: Optional[Union[UserInfo, str]] = None):
+def init_db_once(owner_info: Optional[Union[OwnerInfo, str]] = None):
     """
-    Initialize database engine and sessionmaker for a user.
+    Initialize database engine and sessionmaker for an owner.
 
     Args:
-        user_info: UserInfo object, username string, or None for default user.
-                   - If UserInfo: uses the provided user configuration
-                   - If str: creates UserInfo for that username
+        owner_info: OwnerInfo object, owner id string, or None for default owner.
+                   - If OwnerInfo: uses the provided owner configuration
+                   - If str: creates OwnerInfo for that owner id
                    - If None: uses default user (inovoseltsev)
 
     Returns:
         SQLAlchemy engine
     """
-    global SessionLocal, engine, _current_user_info
+    global SessionLocal, engine, _active_owner_info
 
-    # Convert input to UserInfo
-    resolved_user_info: UserInfo
-    if user_info is None:
-        resolved_user_info = UserInfo()  # Uses default username
-    elif isinstance(user_info, str):
-        resolved_user_info = UserInfo(username=user_info)
+    # Convert input to OwnerInfo
+    resolved_owner_info: OwnerInfo
+    if owner_info is None:
+        resolved_owner_info = OwnerInfo()
+    elif isinstance(owner_info, str):
+        resolved_owner_info = OwnerInfo(owner_id=owner_info)
     else:
-        resolved_user_info = user_info
+        resolved_owner_info = owner_info
 
     if not engine:
-        # Store current user info
-        _current_user_info = resolved_user_info
+        # Store active owner info
+        _active_owner_info = resolved_owner_info
 
         # Create engine and tables
         engine = create_engine(
-            f"sqlite:///{resolved_user_info.db_file}",
+            f"sqlite:///{resolved_owner_info.db_file}",
             connect_args={"check_same_thread": False}
         )
         Base.metadata.create_all(bind=engine)
@@ -70,18 +70,18 @@ def _run_migrations(eng):
 
 
 def reset_engine():
-    """Reset the database engine (useful for tests or switching users)."""
-    global engine, SessionLocal, _current_user_info
+    """Reset the database engine (useful for tests or switching owners)."""
+    global engine, SessionLocal, _active_owner_info
     if engine:
         engine.dispose()
     engine = None
     SessionLocal = None
-    _current_user_info = None
+    _active_owner_info = None
 
 
-def get_current_user() -> Optional[UserInfo]:
-    """Get the currently active user's info."""
-    return _current_user_info
+def get_active_owner() -> Optional[OwnerInfo]:
+    """Get the currently active owner's info."""
+    return _active_owner_info
 
 
 def engine_from_url(url: str, create_tables: bool = True):

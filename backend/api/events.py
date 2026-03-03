@@ -6,12 +6,14 @@ from typing import List, Optional
 from .. import schemas
 import database.models
 import database.db
+from .auth import require_admin
 
 router = APIRouter(prefix="/events", tags=["events"])
 
 @router.post("", response_model=schemas.Event)
 def create_event(
     event: schemas.EventCreate,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db)
 ):
     """Create a new event."""
@@ -66,6 +68,7 @@ def read_event(
 def update_event(
     event_id: int,
     event_update: schemas.EventUpdate,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db)
 ):
     """Update an event."""
@@ -89,6 +92,7 @@ def update_event(
 @router.delete("/{event_id}")
 def delete_event(
     event_id: int,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db)
 ):
     """Delete an event."""

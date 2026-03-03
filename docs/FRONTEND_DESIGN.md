@@ -41,7 +41,7 @@ This document outlines the high-level design for a modern web frontend for the G
 
 ### Key Design Principles
 
-1. **Simplicity First** - Clean, intuitive interface suitable for non-technical users
+1. **Simplicity First** - Clean, intuitive interface suitable for non-technical viewers
 2. **Responsive Design** - Works on desktop, tablet, and mobile
 3. **Progressive Enhancement** - Core functionality works without JavaScript; enhanced with JS
 4. **Accessibility** - WCAG 2.1 AA compliant
@@ -225,9 +225,9 @@ Add to `.vscode/settings.json`:
 │  └──────────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────────┤
 │                     DATABASE (SQLite)                           │
-│                users/auth.sqlite       ← Global auth database   │
-│                users/<username>/data.sqlite  ← User's data      │
-│                users/<username>/media/       ← User's media     │
+│                datasets/auth.sqlite       ← Global auth database   │
+│                datasets/<owner_id>/data.sqlite  ← Owner data      │
+│                datasets/<owner_id>/media/       ← Owner media     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -320,7 +320,7 @@ frontend/
 
 ### 5.1 Authentication Flow Overview
 
-**Manual user registration** where Admin personally registers users, and they then set their own password:
+**Manual viewer registration** where Admin personally registers viewers, and they then set their own password:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -329,15 +329,15 @@ frontend/
 
     ADMIN                              SYSTEM                    USER
       │                                   │                        │
-      │  1. Create user via Web Admin     │                        │
-      │   (username, email)               │                        │
+      │  1. Create viewer via Web Admin   │                        │
+      │   (viewer_id, email)              │                        │
       ├──────────────────────────────────►│                        │
       │                                   │                        │
       │  2. System generates invitation   │                        │
       │     link with secure token        │                        │
       │◄──────────────────────────────────┤                        │
       │                                   │                        │
-      │  3. Share link with user          │                        │
+      │  3. Share link with viewer        │                        │
       │   (email/WhatsApp/Telegram/etc)   │                        │
       ├───────────────────────────────────┼───────────────────────►│
       │                                   │                        │
@@ -356,7 +356,7 @@ frontend/
 
 ### 5.2 Password Reset Flow
 
-When a user forgets their password:
+When a viewer forgets their password:
 1. User contacts Admin (you)
 2. Admin opens Web Admin Panel
 3. Admin clicks "Regenerate Invitation Link" for that user
@@ -369,53 +369,53 @@ When a user forgets their password:
 
 ```python
 # Authentication endpoints (new router: backend/api/auth.py)
-POST /auth/login              # Login with username/password → JWT token
+POST /auth/login              # Login with viewer_id/password → JWT token
 POST /auth/logout             # Logout (invalidate token)
 POST /auth/set-password       # Set password (with invitation token)
-GET  /auth/me                 # Get current user info
+GET  /auth/me                 # Get current viewer info
 
 # Admin endpoints (new router: backend/api/admin.py) - secured with public key
-POST /admin/users             # Create new user → returns invitation link
-GET  /admin/users             # List all users
-PUT  /admin/users/{id}/reset  # Regenerate invitation link
-DELETE /admin/users/{id}      # Delete user
+POST /admin/viewers             # Create new viewer → returns invitation link
+GET  /admin/viewers             # List all viewers
+PUT  /admin/viewers/{id}/reset  # Regenerate invitation link
+DELETE /admin/viewers/{id}      # Delete viewer
 ```
 
 #### Database Schema - Global Auth Database
 
-**Design Decision:** Authentication data is stored in a **separate global database** under the `users/` folder (`users/auth.sqlite`), NOT in each user's `data.sqlite`. This is because:
+**Design Decision:** Authentication data is stored in a **separate global database** under the `datasets/` folder (`datasets/auth.sqlite`), NOT in each owner's `data.sqlite`. This is because:
 
-1. The `data.sqlite` is user-specific genealogy data
-2. Authentication needs to work BEFORE we know which user's database to access
-3. Admin needs to manage all users from one place
-4. Keeps all user-related data under `users/` folder
+1. The `data.sqlite` is owner-specific genealogy data
+2. Authentication needs to work BEFORE we know which owner's database to access
+3. Admin needs to manage all viewers from one place
+4. Keeps all data folders under `datasets/`
 
 ```
 project_root/
-└── users/
+└── datasets/
     ├── auth.sqlite          ← Global authentication database (NEW)
     ├── admin_public.pem     ← Admin public key for signature verification
     ├── inovoseltsev/
-    │   ├── data.sqlite      ← User's genealogy data
+    │   ├── data.sqlite      ← Owner genealogy data
     │   └── media/
     └── john/
         ├── data.sqlite
         └── media/
 ```
 
-#### Auth Database Schema (`users/auth.sqlite`)
+#### Auth Database Schema (`datasets/auth.sqlite`)
 
 ```sql
 -- Global authentication table
-CREATE TABLE IF NOT EXISTS auth_users (
+CREATE TABLE IF NOT EXISTS auth_viewers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,        -- Must match folder name in users/
+    owner_id TEXT UNIQUE NOT NULL,         -- Must match folder name in datasets/
     email TEXT,
     password_hash TEXT,                   -- bcrypt hash, NULL until password set
     invitation_token TEXT,                -- One-time token for password setup
     invitation_expires_at TEXT,           -- Token expiration (ISO format)
     is_active BOOLEAN DEFAULT FALSE,      -- TRUE after password is set
-    is_admin BOOLEAN DEFAULT FALSE,       -- TRUE for admin users
+    is_admin BOOLEAN DEFAULT FALSE,       -- TRUE for admin viewers
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     last_login_at TEXT
 );
@@ -428,7 +428,7 @@ Instead of simple API keys, we use **public key cryptography** for admin authent
 **How it works:**
 1. During setup, generate a **key pair** (private + public key)
 2. **Private key** stays with Admin (never uploaded to server)
-3. **Public key** is stored on server (`users/admin_public.pem`)
+3. **Public key** is stored on server (`datasets/admin_public.pem`)
 4. Admin signs requests with private key, server verifies with public key
 
 ```
@@ -439,7 +439,7 @@ Instead of simple API keys, we use **public key cryptography** for admin authent
     ADMIN (has private key)              SERVER (has public key)
          │                                       │
          │  1. Create request payload            │
-         │     (e.g., create user)               │
+         │     (e.g., create viewer)             │
          │                                       │
          │  2. Sign payload with PRIVATE key     │
          │     signature = sign(payload, privkey)│
@@ -464,13 +464,13 @@ openssl genrsa -out admin_private.pem 2048
 openssl rsa -in admin_private.pem -pubout -out admin_public.pem
 
 # Copy public key to server
-cp admin_public.pem users/admin_public.pem
+cp admin_public.pem datasets/admin_public.pem
 
 # Private key stays with Admin (NEVER upload to server!)
 # Store admin_private.pem securely (USB drive, password manager, etc.)
 ```
 
-**Note:** The `meta_header` table in user's `data.sqlite` stores GEDCOM metadata (submitter info, etc.) and remains separate from authentication.
+**Note:** The `meta_header` table in owner's `data.sqlite` stores GEDCOM metadata (submitter info, etc.) and remains separate from authentication.
 
 ### 5.4 Token-Based Authentication (JWT)
 
@@ -582,11 +582,11 @@ The admin panel provides a web interface for user management:
 │  ADMIN ROUTES (Admin API key required)                          │
 ├─────────────────────────────────────────────────────────────────┤
 │  /admin                 - Admin login                           │
-│  /admin/users           - User management                       │
+│  /admin/viewers         - Viewer management                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Design Decision:** Events and Media are NOT standalone pages. They are embedded within Individual and Family pages for a more intuitive workflow. Users manage events and media in the context of the person or family they belong to.
+**Design Decision:** Events and Media are NOT standalone pages. They are embedded within Individual and Family pages for a more intuitive workflow. Viewers manage events and media in the context of the person or family they belong to.
 
 ### 6.2 Navigation Design
 
@@ -1087,20 +1087,20 @@ export default apiClient;
 
 ### 10.2 Multi-User API Architecture
 
-**Critical Design:** Multiple users may edit their databases simultaneously. The backend must know WHICH user's database to access for each request.
+**Critical Design:** Multiple viewers may edit owner datasets simultaneously. The backend must know WHICH owner's database to access for each request.
 
-#### How User Context is Passed
+#### How Viewer Context is Passed
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                 USER CONTEXT IN API REQUESTS                     │
+│               VIEWER CONTEXT IN API REQUESTS                     │
 └─────────────────────────────────────────────────────────────────┘
 
-  1. User logs in → receives JWT token containing username
+  1. Viewer logs in → receives JWT token containing owner_id
   
   2. JWT Token payload:
      {
-       "sub": "inovoseltsev",     ← username
+       "sub": "inovoseltsev",     ← owner_id
        "exp": 1735500000,         ← expiration
        "iat": 1735496400          ← issued at
      }
@@ -1108,11 +1108,11 @@ export default apiClient;
   3. Every API request includes token in header:
      Authorization: Bearer <jwt_token>
   
-  4. Backend extracts username from token:
-     username = decode_jwt(token)["sub"]
+  4. Backend extracts owner_id from token:
+     owner_id = decode_jwt(token)["sub"]
   
   5. Backend uses correct database:
-     db_path = f"users/{username}/data.sqlite"
+     db_path = f"datasets/{owner_id}/data.sqlite"
 ```
 
 #### Backend Changes Required
@@ -1125,30 +1125,30 @@ import jwt
 
 security = HTTPBearer()
 
-def get_current_user(credentials = Depends(security)) -> str:
-    """Extract username from JWT token."""
+def get_current_viewer(credentials = Depends(security)) -> str:
+    """Extract viewer id from JWT token."""
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=["HS256"])
-        username = payload.get("sub")
-        if not username:
+        viewer_id = payload.get("sub")
+        if not viewer_id:
             raise HTTPException(status_code=401, detail="Invalid token")
-        return username
+        return viewer_id
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-def get_user_db(username: str = Depends(get_current_user)) -> Session:
-    """Get database session for the authenticated user."""
-    user_info = UserInfo(username=username)
-    engine = create_engine(f"sqlite:///{user_info.db_file}")
+def get_owner_db(owner_id: str = Depends(get_current_viewer)) -> Session:
+    """Get database session for the resolved owner."""
+    owner_info = OwnerInfo(owner_id=owner_id)
+    engine = create_engine(f"sqlite:///{owner_info.db_file}")
     Session = sessionmaker(bind=engine)
     return Session()
 
 # Usage in API endpoints:
 @router.get("/individuals")
-def list_individuals(db: Session = Depends(get_user_db)):
-    # db is automatically the correct user's database!
+def list_individuals(db: Session = Depends(get_owner_db)):
+    # db is automatically the correct owner's database!
     return db.query(Individual).all()
 ```
 
@@ -1319,7 +1319,7 @@ The current backend needs these additions:
 POST /auth/login           # Returns JWT token
 POST /auth/logout          # Invalidate token
 POST /auth/set-password    # Set password with invitation token
-GET  /auth/me              # Get current user info
+GET  /auth/me              # Get current viewer info
 
 # Lookup types (new router: backend/api/types.py)
 GET  /types/sex            # Sex codes for dropdown
@@ -1328,7 +1328,7 @@ GET  /types/media          # Media types for dropdown
 GET  /types/family-roles   # Family member roles for dropdown
 
 # Media file upload (enhance backend/api/media.py)
-POST /media/upload         # Multipart form upload, saves to user's media folder
+POST /media/upload         # Multipart form upload, saves to owner's media folder
 GET  /media/{id}/file      # Serve the actual file
 
 # Export (new router: backend/api/export.py)
@@ -1336,10 +1336,10 @@ GET  /export/gedcom        # Export GEDCOM file (uses gedcom_export.py)
 GET  /export/zip           # Export GEDCOM + media as ZIP
 
 # Admin (new router: backend/api/admin.py) - secured with public key signature
-POST /admin/users          # Create user → returns invitation link
-GET  /admin/users          # List users
-PUT  /admin/users/{id}/reset  # Regenerate invitation link
-DELETE /admin/users/{id}   # Delete user
+POST /admin/viewers          # Create viewer → returns invitation link
+GET  /admin/viewers          # List viewers
+PUT  /admin/viewers/{id}/reset  # Regenerate invitation link
+DELETE /admin/viewers/{id}   # Delete viewer
 ```
 
 ---
@@ -1393,10 +1393,10 @@ DELETE /admin/users/{id}   # Delete user
 
 ### 11.3 Media Storage
 
-Files are stored in `users/<username>/media/` with unique filenames:
+Files are stored in `datasets/<owner_id>/media/` with unique filenames:
 
 ```
-users/
+datasets/
 └── inovoseltsev/
     ├── data.sqlite
     ├── data.ged
@@ -1530,14 +1530,14 @@ USER                           FRONTEND                    BACKEND
 |-------|------|---------|
 | **ERROR** | Exceptions, failed operations | Database connection failed, File not found |
 | **WARN** | Potential issues | Slow query (>1s), Low disk space |
-| **INFO** | Key operations | Server started, User logged in (username only) |
+| **INFO** | Key operations | Server started, Viewer logged in (viewer_id only) |
 
 #### What Does NOT Get Logged
 
 - Personal genealogy data (names, dates, places)
 - Passwords or tokens
 - Full request/response bodies
-- Detailed user activity trails
+- Detailed viewer activity trails
 
 #### Logging Implementation (using rsyslog)
 
@@ -1586,7 +1586,7 @@ def setup_logging():
 logger = setup_logging()
 
 # ✅ Good - logs operation status without personal data
-logger.info(f"User '{username}' logged in successfully")
+logger.info(f"Viewer '{viewer_id}' logged in successfully")
 logger.error(f"Database query failed: {error_type}")
 
 # ❌ Bad - would expose personal data
@@ -1695,12 +1695,12 @@ sudo systemctl restart rsyslog
 - [ ] Create basic layout components (Header, Sidebar, Footer)
 - [ ] Create global auth database (`auth.sqlite`)
 - [ ] Implement auth endpoints (login, set-password, me)
-- [ ] Implement admin endpoints (create user, list users, reset invitation)
+- [ ] Implement admin endpoints (create viewer, list viewers, reset invitation)
 - [ ] Implement authentication context and login page
 - [ ] Create Web Admin Panel (user management)
 - [ ] Create protected route wrapper
 
-**Deliverable:** Admin can create users, users can log in and see basic dashboard
+**Deliverable:** Admin can create viewers, viewers can log in and see basic dashboard
 
 ### Phase 2: Core CRUD - Individual Mode (Week 3-4)
 **Goal:** Full CRUD for individuals and families with embedded events & media
@@ -1719,7 +1719,7 @@ sudo systemctl restart rsyslog
 - [ ] Add data binding validation (events/media must belong to individual OR family)
 - [ ] Update backend schema with CHECK constraints
 
-**Deliverable:** Users can manage individuals, families, events, and media
+**Deliverable:** Viewers can manage individuals, families, events, and media
 
 ### Phase 3: Table Mode (Week 5)
 **Goal:** Bulk editing capabilities with "Create Family" shortcut
@@ -1733,7 +1733,7 @@ sudo systemctl restart rsyslog
 - [ ] Batch delete operations
 - [ ] Undo/redo support
 
-**Deliverable:** Users can efficiently edit multiple records and create families from selected individuals
+**Deliverable:** Viewers can efficiently edit multiple records and create families from selected individuals
 
 ### Phase 4: Media Management (Week 6)
 **Goal:** Upload and manage media files
@@ -1744,7 +1744,7 @@ sudo systemctl restart rsyslog
 - [ ] Thumbnail display
 - [ ] File validation (type, size)
 
-**Deliverable:** Users can upload and manage photos/videos within individual/family pages
+**Deliverable:** Viewers can upload and manage photos/videos within individual/family pages
 
 ### Phase 5: Export & Polish (Week 7)
 **Goal:** Export functionality and UX polish
@@ -1792,10 +1792,10 @@ All open questions have been resolved. Here's the summary of decisions:
 | **CSV Import/Export** | Removed from bulk-edit | Not needed initially |
 | **Bulk-Edit Enhancement** | "Create Family from Selected" | Added shortcut |
 | **Bulk-Edit Search** | Search/filter box | Filter individuals in table |
-| **Auth Database** | `users/auth.sqlite` | Under users/ folder |
+| **Auth Database** | `datasets/auth.sqlite` | Under datasets/ folder |
 | **Admin Security** | Public key cryptography | RSA key pair for admin auth |
 | **Logging** | rsyslog | System handles rotation |
-| **User Context** | JWT contains username | Multi-user simultaneous access |
+| **Viewer Context** | JWT contains viewer_id | Multi-viewer simultaneous access |
 | **Lookup Tables** | Dropdowns from types_* tables | GEDCOM 5.5.1 compliance |
 
 ---
@@ -1824,9 +1824,9 @@ Features explicitly deferred to future releases:
 |---------|-------------|----------|
 | **GEDCOM Import via UI** | Upload .ged file through web interface | Medium |
 | **CSV Import** | Import individuals/families from CSV | Low |
-| **Merge Databases** | Merge two user databases | Low |
+| **Merge Databases** | Merge two owner datasets | Low |
 
-**Workaround:** Use CLI import: `python -m database.gedcom_import --user username file.ged`
+**Workaround:** Use CLI import: `python -m database.gedcom_import --owner owner_id file.ged`
 
 ### 18.3 Mobile Support
 
@@ -1842,7 +1842,7 @@ Features explicitly deferred to future releases:
 
 | Feature | Description | Priority |
 |---------|-------------|----------|
-| **Shared Databases** | Multiple users editing same database | Low |
+| **Shared Databases** | Multiple viewers editing same database | Low |
 | **Change Notifications** | Email/push when data changes | Low |
 | **Comments/Discussions** | Discuss individuals/families | Low |
 

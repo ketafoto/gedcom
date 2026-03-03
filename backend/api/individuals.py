@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List
 from .. import schemas
 from . import api_utils
+from .auth import require_admin
 import database.models
 import database.db
 
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/individuals", tags=["individuals"])
 @router.post("", response_model=schemas.Individual)
 def create_individual(
     individual: schemas.IndividualCreate,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db)
 ):
     """Create a new individual with associated names."""
@@ -103,6 +105,7 @@ def read_individual_by_id(
 def update_individual(
     individual_id: int,
     individual_update: schemas.IndividualUpdate,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db)
 ):
     """Update an individual."""
@@ -160,6 +163,7 @@ def update_individual(
 @router.delete("/{individual_id}")
 def delete_individual(
     individual_id: int,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db)
 ):
     """Delete an individual (cascade deletes related names)."""

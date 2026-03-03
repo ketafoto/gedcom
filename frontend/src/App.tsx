@@ -7,6 +7,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { typesApi } from './api/types';
+import { isPublicApp } from './config/appMode';
 
 // Main pages
 import { DashboardPage } from './pages/dashboard/DashboardPage';
@@ -76,6 +77,46 @@ function PrefetchTypes() {
 }
 
 function App() {
+  if (isPublicApp) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Navigate to="/tree" replace />} />
+            <Route
+              path="/tree"
+              element={
+                <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading tree...</div>}>
+                  <TreeOverviewPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/individuals/:id/tree"
+              element={
+                <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading tree...</div>}>
+                  <TreePage />
+                </Suspense>
+              }
+            />
+            <Route path="/individuals/:id" element={<IndividualDetailPage readOnly />} />
+            <Route path="*" element={<Navigate to="/tree" replace />} />
+          </Routes>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#333',
+                color: '#fff',
+              },
+            }}
+          />
+        </BrowserRouter>
+      </QueryClientProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <PrefetchTypes />

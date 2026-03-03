@@ -11,6 +11,7 @@ import { TreeCanvas } from '../../components/tree/TreeCanvas';
 import { DepthSlider } from '../../components/tree/DepthSlider';
 import { TreeLegend } from '../../components/tree/TreeLegend';
 import { ExportControls } from '../../components/tree/ExportControls';
+import { isPublicApp } from '../../config/appMode';
 
 /**
  * Main tree visualization page.
@@ -58,7 +59,7 @@ export function TreePage() {
     if (window.history.length > 1) {
       navigate(-1);
     } else {
-      navigate(`/individuals/${id}`);
+      navigate(isPublicApp ? '/tree' : `/individuals/${id}`);
     }
   }, [navigate, id]);
 

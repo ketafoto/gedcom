@@ -9,6 +9,6 @@
 #
 from . import db
 from . import models
-from . import user_info
+from . import owner_info
 
-__all__ = ["db", "models", "user_info"]
+__all__ = ["db", "models", "owner_info"]

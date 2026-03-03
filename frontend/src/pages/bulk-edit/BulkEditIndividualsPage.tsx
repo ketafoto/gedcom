@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Search, Edit2, Trash2, Save, X, Users, GitBranch } from 'lucide-react';
+import { Search, Edit2, Trash2, Save, X, User, GitBranch } from 'lucide-react';
 import { individualsApi } from '../../api/individuals';
 import { typesApi } from '../../api/types';
 import { Button } from '../../components/common/Button';
@@ -164,7 +164,7 @@ export function BulkEditIndividualsPage() {
           </div>
           {selectedIds.size > 0 && (
             <Button onClick={handleCreateFamily}>
-              <Users className="w-4 h-4 mr-2" />
+              <User className="w-4 h-4 mr-2" />
               Create Family ({selectedIds.size} selected)
             </Button>
           )}
@@ -175,7 +175,7 @@ export function BulkEditIndividualsPage() {
       <Card>
         {filteredIndividuals.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+            <User className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             {searchQuery ? (
               <p>No individuals match your search</p>
             ) : (

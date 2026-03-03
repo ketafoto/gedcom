@@ -78,7 +78,7 @@ def _upload_photo(client, individual_id, age, is_default=False):
 class TestPhotoUpload:
     """Upload endpoint: filename, collision, type validation, defaults."""
 
-    def test_upload_creates_file_with_gedcom_id_and_age(self, client, test_user, log_test_step):
+    def test_upload_creates_file_with_gedcom_id_and_age(self, client, test_owner, log_test_step):
         log_test_step("Upload stores file as <GEDCOM_ID>_<age>.jpg")
         ind = _create_individual(client)
         media = _upload_photo(client, ind["id"], age=25)
@@ -89,10 +89,10 @@ class TestPhotoUpload:
         expected_name = f"{ind['gedcom_id']}_25.jpg"
         assert media["file_path"] == expected_name
 
-        file_on_disk = Path(test_user.media_dir) / expected_name
+        file_on_disk = Path(test_owner.media_dir) / expected_name
         assert file_on_disk.exists(), f"Expected file at {file_on_disk}"
 
-    def test_upload_collision_appends_suffix(self, client, test_user, log_test_step):
+    def test_upload_collision_appends_suffix(self, client, test_owner, log_test_step):
         log_test_step("Second upload at same age gets _2 suffix")
         ind = _create_individual(client)
         m1 = _upload_photo(client, ind["id"], age=30)
@@ -164,11 +164,11 @@ class TestSetDefault:
 class TestDeleteMedia:
     """Delete removes both DB record and physical file."""
 
-    def test_delete_removes_file_on_disk(self, client, test_user, log_test_step):
+    def test_delete_removes_file_on_disk(self, client, test_owner, log_test_step):
         log_test_step("Upload then delete — file should be gone")
         ind = _create_individual(client)
         media = _upload_photo(client, ind["id"], age=25)
-        file_path = Path(test_user.media_dir) / media["file_path"]
+        file_path = Path(test_owner.media_dir) / media["file_path"]
         assert file_path.exists()
 
         r = client.delete(f"/media/{media['id']}")
@@ -180,8 +180,8 @@ class TestTreePhotoSelection:
     """Tree API: photo_url selection and photos list for carousel."""
 
     @pytest.fixture(autouse=True)
-    def _setup_lookup_tables(self, test_user):
-        _ensure_lookup_tables(test_user.db_file)
+    def _setup_lookup_tables(self, test_owner):
+        _ensure_lookup_tables(test_owner.db_file)
 
     def test_no_photos_returns_none(self, client, log_test_step):
         log_test_step("Individual with no photos -> photo_url=None, photos=[]")

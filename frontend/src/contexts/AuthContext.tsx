@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi } from '../api/auth';
-import type { User } from '../types/models';
+import type { Viewer } from '../types/models';
+import { isPublicApp } from '../config/appMode';
 
-// Default username - matches backend DEFAULT_USERNAME
-const DEFAULT_USERNAME = 'inovoseltsev';
+// Default owner id - matches backend DEFAULT_OWNER_ID
+const DEFAULT_OWNER_ID = 'inovoseltsev';
 
 interface AuthContextType {
-  user: User | null;
+  // Viewer = browser identity. It may become editable in future by role.
+  viewer: Viewer | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   logout: () => Promise<void>;
@@ -15,21 +17,28 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [viewer, setViewer] = useState<Viewer | null>(null);
+  const [isLoading, setIsLoading] = useState(!isPublicApp);
 
   useEffect(() => {
-    // Fetch user info from backend (no auth required)
-    const fetchUser = async () => {
+    if (isPublicApp) {
+      setViewer(null);
+      setIsLoading(false);
+      return;
+    }
+
+    // Fetch viewer info from backend.
+    const fetchViewer = async () => {
       try {
-        const userData = await authApi.me();
-        setUser(userData);
+        const viewerData = await authApi.me();
+        setViewer(viewerData);
       } catch {
-        // Fallback to default user if backend is not available
-        setUser({
+        // Fallback to local admin viewer if backend is not available
+        setViewer({
           id: 1,
-          username: DEFAULT_USERNAME,
-          email: `${DEFAULT_USERNAME}@localhost`,
+          viewer_id: DEFAULT_OWNER_ID,
+          role: 'admin',
+          email: `${DEFAULT_OWNER_ID}@localhost`,
           is_active: true,
           is_admin: true,
           created_at: new Date().toISOString(),
@@ -38,21 +47,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     };
-    fetchUser();
+    fetchViewer();
   }, []);
 
   // Logout function (no-op in this simplified auth setup)
   const logout = async () => {
-    // In this app, user is always authenticated, so logout just reloads the page
+    // In this app, admin local mode stays authenticated.
     window.location.reload();
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user,
+        viewer,
         isLoading,
-        isAuthenticated: true, // Always authenticated
+        isAuthenticated: !isPublicApp,
         logout,
       }}
     >

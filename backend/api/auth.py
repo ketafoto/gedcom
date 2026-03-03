@@ -1,24 +1,29 @@
 """
-Authentication stubs - authentication disabled, using default user.
+Viewer (browser identity) and role helpers.
 
-Multi-user structure is preserved (users/<username>/data.sqlite).
-To change user, modify DEFAULT_USERNAME below.
+Terminology:
+- viewer: HTTP/browser caller. In future, viewers may get edit rights.
+- owner: application-side data owner under datasets/<owner>/.
 """
-from fastapi import APIRouter
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, Header, HTTPException
+from pydantic import BaseModel
+
+from backend.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-# Default username - change this to switch users
-DEFAULT_USERNAME = "inovoseltsev"
+# Default local owner id used for local admin viewer identity.
+DEFAULT_OWNER_ID = "inovoseltsev"
 
 
-class UserResponse(BaseModel):
-    """User info response model."""
+class ViewerResponse(BaseModel):
+    """Viewer response model."""
     id: int
-    username: str
+    viewer_id: str
+    role: str
     email: Optional[str] = None
     is_active: bool = True
     is_admin: bool = True
@@ -26,12 +31,13 @@ class UserResponse(BaseModel):
     last_login_at: Optional[str] = None
 
 
-def _get_default_user() -> dict:
-    """Return the default user (no authentication required)."""
+def _build_local_admin_viewer() -> dict:
+    """Return local admin viewer identity."""
     return {
         "id": 1,
-        "username": DEFAULT_USERNAME,
-        "email": f"{DEFAULT_USERNAME}@localhost",
+        "viewer_id": DEFAULT_OWNER_ID,
+        "role": "admin",
+        "email": f"{DEFAULT_OWNER_ID}@localhost",
         "is_active": True,
         "is_admin": True,
         "created_at": datetime.utcnow().isoformat(),
@@ -39,13 +45,40 @@ def _get_default_user() -> dict:
     }
 
 
-def get_current_user() -> dict:
-    """Get the current user (always returns default user)."""
-    return _get_default_user()
+def _build_anonymous_viewer() -> dict:
+    """Return anonymous read-only viewer identity."""
+    return {
+        "id": 0,
+        "viewer_id": "guest",
+        "role": "anonymous",
+        "email": None,
+        "is_active": True,
+        "is_admin": False,
+        "created_at": datetime.utcnow().isoformat(),
+        "last_login_at": None,
+    }
 
 
-@router.get("/me", response_model=UserResponse)
+def get_current_viewer() -> dict:
+    """Resolve current viewer identity from app mode."""
+    if settings.is_public:
+        return _build_anonymous_viewer()
+    return _build_local_admin_viewer()
+
+
+def require_admin(x_admin_key: Optional[str] = Header(default=None, alias="X-Admin-Key")) -> dict:
+    """Require admin-level viewer role for mutating operations."""
+    if settings.is_public:
+        raise HTTPException(status_code=403, detail="Read-only public mode")
+
+    if settings.admin_api_key and x_admin_key != settings.admin_api_key:
+        raise HTTPException(status_code=401, detail="Invalid admin API key")
+
+    return _build_local_admin_viewer()
+
+
+@router.get("/me", response_model=ViewerResponse)
 def get_me():
-    """Get current user info."""
-    return _get_default_user()
+    """Get current viewer info."""
+    return get_current_viewer()
 

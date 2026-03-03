@@ -9,6 +9,7 @@ from typing import List, Optional
 from .. import schemas
 import database.models
 import database.db
+from .auth import require_admin
 
 logger = logging.getLogger("gedcom.backend")
 
@@ -30,6 +31,7 @@ async def upload_photo(
     individual_id: int = Form(...),
     age_on_photo: int = Form(...),
     is_default: bool = Form(False),
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db),
 ):
     """Upload a cropped photo for an individual.
@@ -56,11 +58,11 @@ async def upload_photo(
     if len(data) > MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=400, detail="File exceeds 20 MB limit")
 
-    user_info = database.db.get_current_user()
-    if not user_info:
-        raise HTTPException(status_code=500, detail="No active user")
+    owner = database.db.get_active_owner()
+    if not owner:
+        raise HTTPException(status_code=500, detail="No active owner")
 
-    media_dir = Path(user_info.media_dir)
+    media_dir = Path(owner.media_dir)
     media_dir.mkdir(parents=True, exist_ok=True)
 
     gedcom_id = individual.gedcom_id or f"ID{individual.id}"
@@ -100,11 +102,11 @@ def serve_media_file(media_id: int, db: Session = Depends(database.db.get_db)):
     if not media or not media.file_path:
         raise HTTPException(status_code=404, detail="Media file not found")
 
-    user_info = database.db.get_current_user()
-    if not user_info:
-        raise HTTPException(status_code=500, detail="No active user")
+    owner = database.db.get_active_owner()
+    if not owner:
+        raise HTTPException(status_code=500, detail="No active owner")
 
-    file_path = Path(user_info.media_dir) / media.file_path
+    file_path = Path(owner.media_dir) / media.file_path
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found on disk")
 
@@ -118,6 +120,7 @@ def serve_media_file(media_id: int, db: Session = Depends(database.db.get_db)):
 @router.put("/{media_id}/set-default", response_model=schemas.Media)
 def set_default_photo(
     media_id: int,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db),
 ):
     """Mark a photo as the default for its individual."""
@@ -143,6 +146,7 @@ def set_default_photo(
 @router.post("", response_model=schemas.Media)
 def create_media(
     media: schemas.MediaCreate,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db),
 ):
     """Create a new media record."""
@@ -199,6 +203,7 @@ def read_media_by_id(
 def update_media(
     media_id: int,
     media_update: schemas.MediaUpdate,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db),
 ):
     """Update a media record."""
@@ -223,6 +228,7 @@ def update_media(
 @router.delete("/{media_id}")
 def delete_media(
     media_id: int,
+    _admin: dict = Depends(require_admin),
     db: Session = Depends(database.db.get_db),
 ):
     """Delete a media record and its file on disk."""
@@ -235,9 +241,9 @@ def delete_media(
         raise HTTPException(status_code=404, detail="Media not found")
 
     if media.file_path:
-        user_info = database.db.get_current_user()
-        if user_info:
-            file_path = Path(user_info.media_dir) / media.file_path
+        owner = database.db.get_active_owner()
+        if owner:
+            file_path = Path(owner.media_dir) / media.file_path
             if file_path.exists():
                 file_path.unlink()
 

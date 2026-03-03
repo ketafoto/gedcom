@@ -29,7 +29,7 @@ const changePasswordSchema = z
 type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 
 export function SettingsPage() {
-  const { user } = useAuth();
+  const { viewer } = useAuth();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -73,10 +73,10 @@ export function SettingsPage() {
             <User className="w-8 h-8 text-emerald-600" />
           </div>
           <div>
-            <p className="text-lg font-semibold text-gray-900">{user?.username}</p>
-            <p className="text-gray-600">{user?.email || 'No email set'}</p>
+            <p className="text-lg font-semibold text-gray-900">{viewer?.viewer_id}</p>
+            <p className="text-gray-600">{viewer?.email || 'No email set'}</p>
             <p className="text-sm text-gray-500">
-              Member since {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Unknown'}
+              Member since {viewer?.created_at ? new Date(viewer.created_at).toLocaleDateString() : 'Unknown'}
             </p>
           </div>
         </div>

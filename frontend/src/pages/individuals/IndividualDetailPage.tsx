@@ -24,7 +24,11 @@ import { Spinner } from '../../components/common/Spinner';
 import { PhotoUploadDialog } from '../../components/photo/PhotoUploadDialog';
 import toast from 'react-hot-toast';
 
-export function IndividualDetailPage() {
+interface IndividualDetailPageProps {
+  readOnly?: boolean;
+}
+
+export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageProps) {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -119,8 +123,8 @@ export function IndividualDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-600">Individual not found</p>
-        <Link to="/individuals" className="text-emerald-600 hover:underline">
-          Back to list
+        <Link to={readOnly ? '/tree' : '/individuals'} className="text-emerald-600 hover:underline">
+          {readOnly ? 'Back to tree' : 'Back to list'}
         </Link>
       </div>
     );
@@ -143,7 +147,7 @@ export function IndividualDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/individuals')}
+            onClick={() => navigate(readOnly ? '/tree' : '/individuals')}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
@@ -160,16 +164,20 @@ export function IndividualDetailPage() {
               View Tree
             </Button>
           </Link>
-          <Link to={`/individuals/${id}/edit`}>
-            <Button variant="secondary">
-              <Edit2 className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
-          </Link>
-          <Button variant="danger" onClick={handleDelete}>
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete
-          </Button>
+          {!readOnly && (
+            <>
+              <Link to={`/individuals/${id}/edit`}>
+                <Button variant="secondary">
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              </Link>
+              <Button variant="danger" onClick={handleDelete}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -235,12 +243,12 @@ export function IndividualDetailPage() {
           {/* Events */}
           <Card
             title="Events"
-            actions={
+            actions={!readOnly ? (
               <Button variant="ghost" size="sm">
                 <Plus className="w-4 h-4 mr-1" />
                 Add Event
               </Button>
-            }
+            ) : undefined}
           >
             {(events?.length || 0) === 0 ? (
               <p className="text-gray-500 text-center py-4">No events recorded</p>
@@ -296,11 +304,11 @@ export function IndividualDetailPage() {
           {/* Families */}
           <Card
             title="Families"
-            actions={
+            actions={!readOnly ? (
               <Button variant="ghost" size="sm">
                 <Plus className="w-4 h-4" />
               </Button>
-            }
+            ) : undefined}
           >
             {relatedFamilies.length === 0 ? (
               <p className="text-gray-500 text-center py-4">No family connections</p>
@@ -335,26 +343,28 @@ export function IndividualDetailPage() {
           {/* Photos */}
           <Card
             title="Photos"
-            actions={
+            actions={!readOnly ? (
               <Button variant="ghost" size="sm" onClick={() => setShowPhotoDialog(true)}>
                 <Camera className="w-4 h-4 mr-1" />
                 Add Photo
               </Button>
-            }
+            ) : undefined}
           >
             {(media?.length || 0) === 0 ? (
               <div className="text-center py-4">
                 <Image className="w-12 h-12 mx-auto text-gray-300 mb-2" />
                 <p className="text-gray-500 text-sm">No photos yet</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => setShowPhotoDialog(true)}
-                >
-                  <Camera className="w-4 h-4 mr-1" />
-                  Add first photo
-                </Button>
+                {!readOnly && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => setShowPhotoDialog(true)}
+                  >
+                    <Camera className="w-4 h-4 mr-1" />
+                    Add first photo
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
@@ -382,28 +392,30 @@ export function IndividualDetailPage() {
                         <Star className="absolute top-1 right-1 w-4 h-4 text-amber-400 fill-amber-400" />
                       )}
                       {/* Hover actions */}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors
-                                      rounded-lg flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
-                        {!item.is_default && (
+                      {!readOnly && (
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors
+                                        rounded-lg flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                          {!item.is_default && (
+                            <button
+                              onClick={() => setDefaultMutation.mutate(item.id)}
+                              className="p-1.5 bg-white/90 rounded-full hover:bg-white"
+                              title="Set as default"
+                            >
+                              <Star className="w-3.5 h-3.5 text-amber-500" />
+                            </button>
+                          )}
                           <button
-                            onClick={() => setDefaultMutation.mutate(item.id)}
+                            onClick={() => {
+                              if (window.confirm('Delete this photo?'))
+                                deleteMediaMutation.mutate(item.id);
+                            }}
                             className="p-1.5 bg-white/90 rounded-full hover:bg-white"
-                            title="Set as default"
+                            title="Delete photo"
                           >
-                            <Star className="w-3.5 h-3.5 text-amber-500" />
+                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
                           </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            if (window.confirm('Delete this photo?'))
-                              deleteMediaMutation.mutate(item.id);
-                          }}
-                          className="p-1.5 bg-white/90 rounded-full hover:bg-white"
-                          title="Delete photo"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                        </button>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   ))}
               </div>
@@ -413,7 +425,7 @@ export function IndividualDetailPage() {
       </div>
 
       {/* Photo upload dialog */}
-      {showPhotoDialog && (
+      {!readOnly && showPhotoDialog && (
         <PhotoUploadDialog
           individualId={Number(id)}
           onUpload={handlePhotoUpload}
