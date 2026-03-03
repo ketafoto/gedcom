@@ -8,6 +8,8 @@ export interface CropArea {
 const MAX_WIDTH = 600;
 const MAX_HEIGHT = 750;
 const JPEG_QUALITY = 0.85;
+const MIN_SUBJECT_SCALE = 0.6;
+const MAX_SUBJECT_SCALE = 1;
 
 /**
  * Crop, downscale, and compress the selected region into a JPEG Blob.
@@ -22,6 +24,7 @@ export async function getCroppedBlob(
   maxWidth = MAX_WIDTH,
   maxHeight = MAX_HEIGHT,
   quality = JPEG_QUALITY,
+  subjectScale = 1,
 ): Promise<Blob> {
   const image = await createImage(imageSrc);
 
@@ -43,17 +46,59 @@ export async function getCroppedBlob(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
 
-  ctx.drawImage(
-    image,
-    cropArea.x,
-    cropArea.y,
-    cropArea.width,
-    cropArea.height,
-    0,
-    0,
-    outW,
-    outH,
+  const clampedScale = Math.max(
+    MIN_SUBJECT_SCALE,
+    Math.min(MAX_SUBJECT_SCALE, subjectScale),
   );
+
+  if (clampedScale < 0.999) {
+    // Use a blurred version of the same crop as background fill.
+    ctx.save();
+    ctx.filter = 'blur(14px) brightness(0.72)';
+    const bleed = 1.08;
+    const bgW = outW * bleed;
+    const bgH = outH * bleed;
+    ctx.drawImage(
+      image,
+      cropArea.x,
+      cropArea.y,
+      cropArea.width,
+      cropArea.height,
+      -(bgW - outW) / 2,
+      -(bgH - outH) / 2,
+      bgW,
+      bgH,
+    );
+    ctx.restore();
+
+    const drawW = outW * clampedScale;
+    const drawH = outH * clampedScale;
+    const drawX = (outW - drawW) / 2;
+    const drawY = (outH - drawH) / 2;
+    ctx.drawImage(
+      image,
+      cropArea.x,
+      cropArea.y,
+      cropArea.width,
+      cropArea.height,
+      drawX,
+      drawY,
+      drawW,
+      drawH,
+    );
+  } else {
+    ctx.drawImage(
+      image,
+      cropArea.x,
+      cropArea.y,
+      cropArea.width,
+      cropArea.height,
+      0,
+      0,
+      outW,
+      outH,
+    );
+  }
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(

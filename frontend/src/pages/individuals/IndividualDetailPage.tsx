@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,6 +23,7 @@ import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
 import { PhotoUploadDialog } from '../../components/photo/PhotoUploadDialog';
 import toast from 'react-hot-toast';
+import type { Media } from '../../types/models';
 
 interface IndividualDetailPageProps {
   readOnly?: boolean;
@@ -57,6 +58,36 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
   });
 
   const [showPhotoDialog, setShowPhotoDialog] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState<Media | null>(null);
+  const [newPhotoSrc, setNewPhotoSrc] = useState<string | null>(null);
+  const [photoCacheBust, setPhotoCacheBust] = useState(() => Date.now());
+  const addPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (newPhotoSrc) URL.revokeObjectURL(newPhotoSrc);
+    };
+  }, [newPhotoSrc]);
+
+  const handleStartAddPhoto = () => {
+    if (addPhotoInputRef.current) {
+      addPhotoInputRef.current.value = '';
+      addPhotoInputRef.current.click();
+    }
+  };
+
+  const handleAddPhotoFileSelected = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    setNewPhotoSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return objectUrl;
+    });
+    setEditingPhoto(null);
+    setShowPhotoDialog(true);
+  };
 
   const deleteMutation = useMutation({
     mutationFn: individualsApi.delete,
@@ -88,15 +119,41 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
     onError: () => toast.error('Failed to set default'),
   });
 
-  const handlePhotoUpload = async (blob: Blob, age: number, isDefault: boolean) => {
-    await mediaApi.uploadPhoto({
-      file: blob,
-      individual_id: Number(id),
-      age_on_photo: age,
-      is_default: isDefault,
-    });
+  const handlePhotoUpload = async ({
+    blob,
+    age,
+    isDefault,
+    sourceMediaId,
+  }: {
+    blob: Blob;
+    age: number;
+    isDefault: boolean;
+    sourceMediaId?: number;
+  }) => {
+    if (sourceMediaId) {
+      await mediaApi.recropPhoto({
+        media_id: sourceMediaId,
+        file: blob,
+        age_on_photo: age,
+        is_default: isDefault,
+      });
+      toast.success('Photo updated');
+    } else {
+      await mediaApi.uploadPhoto({
+        file: blob,
+        individual_id: Number(id),
+        age_on_photo: age,
+        is_default: isDefault,
+      });
+      toast.success('Photo uploaded');
+    }
     queryClient.invalidateQueries({ queryKey: ['media', { individual_id: Number(id) }] });
-    toast.success('Photo uploaded');
+    setPhotoCacheBust(Date.now());
+    setEditingPhoto(null);
+    setNewPhotoSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setShowPhotoDialog(false);
   };
 
@@ -140,6 +197,14 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
     family.members.some((m) => m.individual_id === Number(id)) ||
     family.children.some((c) => c.child_id === Number(id))
   );
+  const sortedPhotoMedia = [...(media || [])]
+    .filter((m) => m.media_type_code === 'photo')
+    .sort((a, b) => {
+      const ageA = a.age_on_photo ?? Number.POSITIVE_INFINITY;
+      const ageB = b.age_on_photo ?? Number.POSITIVE_INFINITY;
+      if (ageA !== ageB) return ageA - ageB;
+      return a.id - b.id;
+    });
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -344,7 +409,13 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
           <Card
             title="Photos"
             actions={!readOnly ? (
-              <Button variant="ghost" size="sm" onClick={() => setShowPhotoDialog(true)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  handleStartAddPhoto();
+                }}
+              >
                 <Camera className="w-4 h-4 mr-1" />
                 Add Photo
               </Button>
@@ -359,7 +430,9 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
                     variant="ghost"
                     size="sm"
                     className="mt-2"
-                    onClick={() => setShowPhotoDialog(true)}
+                    onClick={() => {
+                      handleStartAddPhoto();
+                    }}
                   >
                     <Camera className="w-4 h-4 mr-1" />
                     Add first photo
@@ -368,17 +441,15 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {media
-                  ?.filter((m) => m.media_type_code === 'photo')
-                  .map((item) => (
+                {sortedPhotoMedia.map((item) => (
                     <div key={item.id} className="group relative">
                       <div
-                        className={`aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden ring-2 ${
+                        className={`w-full aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden ring-2 ${
                           item.is_default ? 'ring-amber-400' : 'ring-transparent'
                         }`}
                       >
                         <img
-                          src={mediaApi.getFileUrl(item.id)}
+                          src={`${mediaApi.getFileUrl(item.id)}?v=${photoCacheBust}`}
                           alt={`Age ${item.age_on_photo ?? '?'}`}
                           className="w-full h-full object-cover"
                           loading="lazy"
@@ -395,6 +466,20 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
                       {!readOnly && (
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors
                                         rounded-lg flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                          <button
+                            onClick={() => {
+                              setEditingPhoto(item);
+                              setNewPhotoSrc((prev) => {
+                                if (prev) URL.revokeObjectURL(prev);
+                                return null;
+                              });
+                              setShowPhotoDialog(true);
+                            }}
+                            className="p-1.5 bg-white/90 rounded-full hover:bg-white"
+                            title="Edit crop"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-emerald-600" />
+                          </button>
                           {!item.is_default && (
                             <button
                               onClick={() => setDefaultMutation.mutate(item.id)}
@@ -428,10 +513,33 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
       {!readOnly && showPhotoDialog && (
         <PhotoUploadDialog
           individualId={Number(id)}
+          sourceMediaId={editingPhoto?.id}
+          initialImageSrc={
+            editingPhoto
+              ? `${mediaApi.getFileUrl(editingPhoto.id)}?v=${photoCacheBust}`
+              : newPhotoSrc ?? undefined
+          }
+          initialAge={editingPhoto?.age_on_photo}
+          initialIsDefault={editingPhoto?.is_default}
           onUpload={handlePhotoUpload}
-          onClose={() => setShowPhotoDialog(false)}
+          onClose={() => {
+            setShowPhotoDialog(false);
+            setEditingPhoto(null);
+            setNewPhotoSrc((prev) => {
+              if (prev) URL.revokeObjectURL(prev);
+              return null;
+            });
+          }}
         />
       )}
+
+      <input
+        ref={addPhotoInputRef}
+        type="file"
+        accept=".jpg,.jpeg,.png,.webp,.heic,.heif"
+        onChange={handleAddPhotoFileSelected}
+        className="hidden"
+      />
     </div>
   );
 }

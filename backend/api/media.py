@@ -141,6 +141,58 @@ def set_default_photo(
     return media
 
 
+@router.put("/{media_id}/re-crop", response_model=schemas.Media)
+async def recrop_photo(
+    media_id: int,
+    file: UploadFile = File(...),
+    age_on_photo: int = Form(...),
+    is_default: bool = Form(False),
+    _admin: dict = Depends(require_admin),
+    db: Session = Depends(database.db.get_db),
+):
+    """Replace an existing photo file with a newly cropped version."""
+    media = (
+        db.query(database.models.Media)
+        .filter(database.models.Media.id == media_id)
+        .first()
+    )
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+    if media.media_type_code != "photo":
+        raise HTTPException(status_code=400, detail="Media is not a photo")
+    if not media.file_path:
+        raise HTTPException(status_code=400, detail="Media has no file path")
+
+    content_type = (file.content_type or "").lower()
+    if content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {content_type}. Allowed: JPEG, PNG, WebP, HEIC/HEIF",
+        )
+
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=400, detail="File exceeds 20 MB limit")
+
+    owner = database.db.get_active_owner()
+    if not owner:
+        raise HTTPException(status_code=500, detail="No active owner")
+
+    file_path = Path(owner.media_dir) / media.file_path
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_bytes(data)
+
+    if media.individual_id:
+        if is_default:
+            _clear_defaults(db, media.individual_id)
+        media.is_default = 1 if is_default else 0
+
+    media.age_on_photo = age_on_photo
+    db.commit()
+    db.refresh(media)
+    return media
+
+
 # ── Standard CRUD ────────────────────────────────────────────────────────────
 
 @router.post("", response_model=schemas.Media)

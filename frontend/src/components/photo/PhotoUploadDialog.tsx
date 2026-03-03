@@ -18,25 +18,51 @@ const PREVIEW_H = 110;
 
 interface PhotoUploadDialogProps {
   individualId: number;
-  onUpload: (blob: Blob, age: number, isDefault: boolean) => Promise<void>;
+  sourceMediaId?: number;
+  initialImageSrc?: string;
+  initialAge?: number;
+  initialIsDefault?: boolean;
+  onUpload: (params: {
+    blob: Blob;
+    age: number;
+    isDefault: boolean;
+    sourceMediaId?: number;
+  }) => Promise<void>;
   onClose: () => void;
 }
 
 export function PhotoUploadDialog({
+  sourceMediaId,
+  initialImageSrc,
+  initialAge,
+  initialIsDefault,
   onUpload,
   onClose,
 }: PhotoUploadDialogProps) {
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(initialImageSrc ?? null);
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
-  const [age, setAge] = useState('');
-  const [isDefault, setIsDefault] = useState(false);
+  const [age, setAge] = useState(initialAge != null ? String(initialAge) : '');
+  const [isDefault, setIsDefault] = useState(Boolean(initialIsDefault));
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
+  const [subjectScale, setSubjectScale] = useState(1);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    setImageSrc(initialImageSrc ?? null);
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+    setAge(initialAge != null ? String(initialAge) : '');
+    setIsDefault(Boolean(initialIsDefault));
+    setIsUploading(false);
+    setError('');
+    setSubjectScale(1);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [initialImageSrc, initialAge, initialIsDefault, sourceMediaId]);
 
   /* ---- file selection ---- */
 
@@ -91,18 +117,57 @@ export function PhotoUploadDialog({
 
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(
-      img,
-      c.x * scaleX,
-      c.y * scaleY,
-      c.width * scaleX,
-      c.height * scaleY,
-      0,
-      0,
-      canvas.width,
-      canvas.height,
-    );
-  }, [completedCrop]);
+    const clampedScale = Math.max(0.6, Math.min(1, subjectScale));
+
+    if (clampedScale < 0.999) {
+      // Match export composition: blurred background + centered scaled subject.
+      ctx.save();
+      ctx.filter = 'blur(10px) brightness(0.72)';
+      const bleed = 1.08;
+      const bgW = canvas.width * bleed;
+      const bgH = canvas.height * bleed;
+      ctx.drawImage(
+        img,
+        c.x * scaleX,
+        c.y * scaleY,
+        c.width * scaleX,
+        c.height * scaleY,
+        -(bgW - canvas.width) / 2,
+        -(bgH - canvas.height) / 2,
+        bgW,
+        bgH,
+      );
+      ctx.restore();
+
+      const drawW = canvas.width * clampedScale;
+      const drawH = canvas.height * clampedScale;
+      const drawX = (canvas.width - drawW) / 2;
+      const drawY = (canvas.height - drawH) / 2;
+      ctx.drawImage(
+        img,
+        c.x * scaleX,
+        c.y * scaleY,
+        c.width * scaleX,
+        c.height * scaleY,
+        drawX,
+        drawY,
+        drawW,
+        drawH,
+      );
+    } else {
+      ctx.drawImage(
+        img,
+        c.x * scaleX,
+        c.y * scaleY,
+        c.width * scaleX,
+        c.height * scaleY,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+    }
+  }, [completedCrop, subjectScale]);
 
   /* ---- submit ---- */
 
@@ -127,13 +192,26 @@ export function PhotoUploadDialog({
         y: completedCrop.y * scaleY,
         width: completedCrop.width * scaleX,
         height: completedCrop.height * scaleY,
+      }, undefined, undefined, undefined, subjectScale);
+      await onUpload({
+        blob,
+        age: ageNum,
+        isDefault,
+        sourceMediaId,
       });
-      await onUpload(blob, ageNum, isDefault);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
       setIsUploading(false);
     }
-  }, [imageSrc, completedCrop, age, isDefault, onUpload]);
+  }, [
+    imageSrc,
+    completedCrop,
+    age,
+    isDefault,
+    onUpload,
+    sourceMediaId,
+    subjectScale,
+  ]);
 
   /* ---- render ---- */
 
@@ -142,7 +220,9 @@ export function PhotoUploadDialog({
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Add Photo</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {sourceMediaId ? 'Edit Photo' : 'Add Photo'}
+          </h2>
           <button
             onClick={onClose}
             className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
@@ -170,7 +250,7 @@ export function PhotoUploadDialog({
             </button>
           ) : (
             <>
-              <div className="flex gap-6">
+              <div className="flex gap-6 items-stretch">
                 {/* Crop area */}
                 <div className="flex-1 min-w-0">
                   <div className="bg-gray-900 rounded-xl overflow-hidden inline-block">
@@ -187,9 +267,54 @@ export function PhotoUploadDialog({
                           style={{ paddingTop: '24.9%' }}
                         >
                           <div
-                            className="border-2 border-dashed border-white/40 rounded-full"
+                            className="relative rounded-full"
                             style={{ width: '57.6%', height: '73%' }}
-                          />
+                          >
+                            <svg
+                              className="absolute inset-0 w-full h-full"
+                              viewBox="0 0 100 100"
+                              preserveAspectRatio="none"
+                              aria-hidden="true"
+                            >
+                              <ellipse
+                                cx="50"
+                                cy="50"
+                                rx="49.5"
+                                ry="49.5"
+                                fill="none"
+                                stroke="#000"
+                                strokeWidth="1"
+                                strokeDasharray="6 6"
+                              >
+                                <animate
+                                  attributeName="stroke-dashoffset"
+                                  from="0"
+                                  to="-12"
+                                  dur="1s"
+                                  repeatCount="indefinite"
+                                />
+                              </ellipse>
+                              <ellipse
+                                cx="50"
+                                cy="50"
+                                rx="49.5"
+                                ry="49.5"
+                                fill="none"
+                                stroke="#fff"
+                                strokeWidth="1"
+                                strokeDasharray="6 6"
+                                strokeDashoffset="6"
+                              >
+                                <animate
+                                  attributeName="stroke-dashoffset"
+                                  from="-6"
+                                  to="-18"
+                                  dur="1s"
+                                  repeatCount="indefinite"
+                                />
+                              </ellipse>
+                            </svg>
+                          </div>
                         </div>
                       )}
                     >
@@ -202,12 +327,60 @@ export function PhotoUploadDialog({
                     </ReactCrop>
                   </div>
 
-                  <div className="flex items-center gap-3 mt-2">
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Align face to the oval guide for consistent carousel look.
+                    Drag corners/edges to resize, drag inside to reposition.
+                  </p>
+                </div>
+
+                {/* Right panel: preview + photo controls */}
+                <div className="w-56 shrink-0 flex flex-col pt-1">
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tree preview
+                    </span>
+                    <div
+                      className="rounded-xl overflow-hidden ring-2 ring-gray-300 bg-gray-100"
+                      style={{ width: PREVIEW_W, height: PREVIEW_H }}
+                    >
+                      <canvas
+                        ref={previewCanvasRef}
+                        style={{
+                          width: PREVIEW_W,
+                          height: PREVIEW_H,
+                          display: 'block',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Zoom out (add margin)
+                      </label>
+                      <input
+                        type="range"
+                        min={60}
+                        max={100}
+                        step={1}
+                        value={Math.round(subjectScale * 100)}
+                        onChange={(e) =>
+                          setSubjectScale(Number(e.target.value) / 100)
+                        }
+                        className="w-full accent-emerald-600"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {Math.round(subjectScale * 100)}%
+                      </p>
+                    </div>
+
                     <button
                       onClick={() => {
                         setImageSrc(null);
                         setCrop(undefined);
                         setCompletedCrop(undefined);
+                        setSubjectScale(1);
                         if (fileInputRef.current)
                           fileInputRef.current.value = '';
                       }}
@@ -215,73 +388,43 @@ export function PhotoUploadDialog({
                     >
                       Choose different photo
                     </button>
-                  </div>
 
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    Align face to the oval guide for consistent carousel look.
-                    Drag corners/edges to resize, drag inside to reposition.
-                  </p>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Approximate age on photo{' '}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={150}
+                        value={age}
+                        onChange={(e) => {
+                          setAge(e.target.value);
+                          setError('');
+                        }}
+                        placeholder="e.g. 25"
+                        className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2
+                                   focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                      />
+                    </div>
 
-                {/* Preview: how it will look on the tree */}
-                <div className="flex flex-col items-center gap-2 shrink-0 pt-1">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tree preview
-                  </span>
-                  <div
-                    className="rounded-xl overflow-hidden ring-2 ring-gray-300 bg-gray-100"
-                    style={{ width: PREVIEW_W, height: PREVIEW_H }}
-                  >
-                    <canvas
-                      ref={previewCanvasRef}
-                      style={{
-                        width: PREVIEW_W,
-                        height: PREVIEW_H,
-                        display: 'block',
-                      }}
-                    />
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isDefault}
+                        onChange={(e) => setIsDefault(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-emerald-600
+                                   focus:ring-emerald-500"
+                      />
+                      <span className="text-sm text-gray-700">
+                        Set as default (show on tree)
+                      </span>
+                    </label>
                   </div>
                 </div>
               </div>
             </>
-          )}
-
-          {/* Age + default */}
-          {imageSrc && (
-            <div className="space-y-3 pt-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Approximate age on photo{' '}
-                  <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  max={150}
-                  value={age}
-                  onChange={(e) => {
-                    setAge(e.target.value);
-                    setError('');
-                  }}
-                  placeholder="e.g. 25"
-                  className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2
-                             focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-                />
-              </div>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isDefault}
-                  onChange={(e) => setIsDefault(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-emerald-600
-                             focus:ring-emerald-500"
-                />
-                <span className="text-sm text-gray-700">
-                  Set as default (show on tree)
-                </span>
-              </label>
-            </div>
           )}
 
           {error && <p className="text-sm text-red-600">{error}</p>}

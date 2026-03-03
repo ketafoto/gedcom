@@ -15,6 +15,13 @@ export interface PhotoUploadParams {
   is_default: boolean;
 }
 
+export interface PhotoRecropParams {
+  media_id: number;
+  file: Blob;
+  age_on_photo: number;
+  is_default: boolean;
+}
+
 export const mediaApi = {
   list: async (params: MediaListParams = {}): Promise<Media[]> => {
     const response = await apiClient.get<Media[]>('/media', { params });
@@ -36,6 +43,22 @@ export const mediaApi = {
     const response = await apiClient.post<Media>('/media/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    return response.data;
+  },
+
+  recropPhoto: async (params: PhotoRecropParams): Promise<Media> => {
+    const formData = new FormData();
+    formData.append('file', params.file, 'photo.jpg');
+    formData.append('age_on_photo', String(params.age_on_photo));
+    formData.append('is_default', String(params.is_default));
+
+    const response = await apiClient.put<Media>(
+      `/media/${params.media_id}/re-crop`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      },
+    );
     return response.data;
   },
 
