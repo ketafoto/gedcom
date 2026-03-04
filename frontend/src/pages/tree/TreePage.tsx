@@ -25,6 +25,7 @@ export function TreePage() {
 
   const [ancestorDepth, setAncestorDepth] = useState(1);
   const [descendantDepth, setDescendantDepth] = useState(1);
+  const [photoIntervalSec, setPhotoIntervalSec] = useState(3);
   const [showExport, setShowExport] = useState(false);
   const viewportRef = useRef<HTMLDivElement | null>(null);
 
@@ -97,7 +98,7 @@ export function TreePage() {
     : 'Individual';
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col">
       {/* Header toolbar */}
       <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 shadow-sm">
         <div className="flex items-center gap-3">
@@ -124,6 +125,23 @@ export function TreePage() {
               onDescendantDepthChange={setDescendantDepth}
             />
           )}
+
+          <div className="flex items-center gap-2 px-2 py-1 bg-slate-100 rounded-lg border border-slate-200">
+            <label htmlFor="photo-interval-slider" className="text-[11px] text-slate-600 whitespace-nowrap">
+              Photo {photoIntervalSec}s
+            </label>
+            <input
+              id="photo-interval-slider"
+              type="range"
+              min={1}
+              max={10}
+              step={1}
+              value={photoIntervalSec}
+              onChange={(e) => setPhotoIntervalSec(Number(e.target.value))}
+              className="w-20 accent-emerald-600"
+              title="Photo carousel interval (1-10 seconds)"
+            />
+          </div>
 
           {/* Export button */}
           <button
@@ -174,6 +192,7 @@ export function TreePage() {
           <ReactFlowProvider key={individualId}>
             <TreeCanvas
               data={treeData}
+              photoIntervalMs={photoIntervalSec * 1000}
               viewportRef={viewportRef}
               onPersonClick={handlePersonClick}
               onPersonDoubleClick={handlePersonDoubleClick}

@@ -8,12 +8,13 @@ import { PhotoCarousel } from './PhotoCarousel';
 
 interface PersonNodeData extends TreeNode {
   isFocus: boolean;
+  carouselIntervalMs?: number;
 }
 
 /**
  * Custom React Flow node for rendering a person in the family tree.
  * Shows a rectangular (slightly rounded) portrait, name, and birth/death years.
- * When hovered, cycles through all photos with a fade transition.
+ * When hovered, cycles through all photos with a blur cross-fade transition.
  */
 export const PersonNode = memo(function PersonNode({
   data,
@@ -92,6 +93,7 @@ export const PersonNode = memo(function PersonNode({
               photos={data.photos}
               alt={data.display_name}
               isHovering={isHovering}
+              intervalMs={data.carouselIntervalMs}
             />
           ) : data.photo_url ? (
             <img

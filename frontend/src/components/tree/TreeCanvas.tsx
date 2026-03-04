@@ -18,6 +18,8 @@ import { PersonNode } from './PersonNode';
 
 interface TreeCanvasProps {
   data: TreeData;
+  /** Interval between carousel photo changes in milliseconds */
+  photoIntervalMs?: number;
   /** Ref to expose the React Flow viewport element for export */
   viewportRef?: React.RefObject<HTMLDivElement | null>;
   /** Callback when a person node is clicked (re-center tree on them) */
@@ -33,20 +35,41 @@ const nodeTypes: NodeTypes = {
 /**
  * Inner component that uses useReactFlow (must be inside ReactFlowProvider).
  */
-function TreeCanvasInner({ data, viewportRef, onPersonClick, onPersonDoubleClick }: TreeCanvasProps) {
+function TreeCanvasInner({
+  data,
+  photoIntervalMs,
+  viewportRef,
+  onPersonClick,
+  onPersonDoubleClick,
+}: TreeCanvasProps) {
   const { fitView } = useReactFlow();
   const layout = useMemo(() => computeTreeLayout(data), [data]);
-  const [nodes, setNodes, onNodesChange] = useNodesState(layout.nodes);
+  const nodesWithCarouselInterval = useMemo(
+    () =>
+      layout.nodes.map((node) =>
+        node.type === 'personNode'
+          ? {
+              ...node,
+              data: {
+                ...(node.data as Record<string, unknown>),
+                carouselIntervalMs: (photoIntervalMs ?? 3000),
+              },
+            }
+          : node,
+      ),
+    [layout.nodes, photoIntervalMs],
+  );
+  const [nodes, setNodes, onNodesChange] = useNodesState(nodesWithCarouselInterval);
   const [edges, setEdges, onEdgesChange] = useEdgesState(layout.edges);
 
   // Update nodes/edges when data changes
   useEffect(() => {
-    setNodes(layout.nodes);
+    setNodes(nodesWithCarouselInterval);
     setEdges(layout.edges);
     // Fit view after layout settles
     const timer = setTimeout(() => fitView({ padding: 0.15, duration: 300 }), 150);
     return () => clearTimeout(timer);
-  }, [layout, setNodes, setEdges, fitView]);
+  }, [nodesWithCarouselInterval, layout.edges, setNodes, setEdges, fitView]);
 
   const handleNodeClick: NodeMouseHandler = useCallback(
     (_event, node) => {
@@ -85,7 +108,7 @@ function TreeCanvasInner({ data, viewportRef, onPersonClick, onPersonDoubleClick
         elementsSelectable={false}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e5e7eb" />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1.1} color="#d6dcf5" />
         <Controls
           showInteractive={false}
           position="bottom-left"

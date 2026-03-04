@@ -31,14 +31,14 @@ function findRestIndex(photos: TreeNodePhoto[]): number {
 }
 
 /**
- * Cycles through photos on hover with a cross-fade transition.
+ * Cycles through photos on hover with a soft blur cross-fade transition.
  * At rest shows the default photo, or the one closest to age 35.
  */
 export function PhotoCarousel({
   photos,
   alt,
   isHovering,
-  intervalMs = 2000,
+  intervalMs = 3000,
   className = '',
 }: PhotoCarouselProps) {
   const [index, setIndex] = useState(0);
@@ -64,18 +64,19 @@ export function PhotoCarousel({
   const photo = photos[index];
 
   return (
-    <div className={`relative w-full h-full ${className}`}>
-      <AnimatePresence mode="wait">
+    <div className={`relative w-full h-full bg-slate-200 ${className}`}>
+      <AnimatePresence mode="sync" initial={false}>
         <motion.img
           key={photo.url}
           src={photo.url}
           alt={alt}
           className="absolute inset-0 w-full h-full object-cover"
           loading="lazy"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
+          initial={{ opacity: 0, filter: 'blur(10px)', scale: 1.03 }}
+          animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+          exit={{ opacity: 0, filter: 'blur(6px)', scale: 0.99 }}
+          transition={{ duration: 1, ease: 'easeOut' }}
+          style={{ willChange: 'opacity, filter, transform' }}
         />
       </AnimatePresence>
 
