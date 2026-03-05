@@ -55,6 +55,18 @@ SUPPORTED_INDI_TAGS = INDI_EVENT_TAGS | {"NAME", "SEX", "NOTE", "FAMC", "FAMS", 
 SUPPORTED_FAM_TAGS = FAM_EVENT_TAGS | {"HUSB", "WIFE", "CHIL", "NOTE", "OBJE"}
 SUPPORTED_L2_TAGS = {"DATE", "PLAC", "TYPE", "FILE", "FORM", "TITL"}
 
+_AGE_FROM_FILENAME_RE = re.compile(r'_(\d+)(?:_\d+)?\.\w+$')
+
+
+def _extract_age_from_filename(file_path: str) -> Optional[int]:
+    """Extract age from photo filename convention: {id}_{age}.ext or {id}_{age}_{dup}.ext"""
+    m = _AGE_FROM_FILENAME_RE.search(file_path)
+    if m:
+        age = int(m.group(1))
+        if 0 <= age <= 150:
+            return age
+    return None
+
 
 # ==================== ORM Helper Functions ====================
 
@@ -622,12 +634,13 @@ def import_gedcom(gedcom_file: Path, db_file: Path) -> bool:
 
                 # Add media for this individual
                 for media_data in ind_data.get("media", []):
-                    if media_data.get("file"):  # Only add if file path exists
+                    if media_data.get("file"):
                         db_media = Media(
                             individual_id=db_ind.id,
                             file_path=media_data["file"],
                             media_type_code=media_data.get("type"),
-                            description=media_data.get("title")
+                            description=media_data.get("title"),
+                            age_on_photo=_extract_age_from_filename(media_data["file"]),
                         )
                         db.add(db_media)
                         media_count += 1
@@ -693,12 +706,13 @@ def import_gedcom(gedcom_file: Path, db_file: Path) -> bool:
 
                 # Add media for this family
                 for media_data in fam_data.get("media", []):
-                    if media_data.get("file"):  # Only add if file path exists
+                    if media_data.get("file"):
                         db_media = Media(
                             family_id=db_fam.id,
                             file_path=media_data["file"],
                             media_type_code=media_data.get("type"),
-                            description=media_data.get("title")
+                            description=media_data.get("title"),
+                            age_on_photo=_extract_age_from_filename(media_data["file"]),
                         )
                         db.add(db_media)
                         media_count += 1
