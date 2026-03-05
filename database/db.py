@@ -17,6 +17,39 @@ _active_owner_info: Optional[OwnerInfo] = None
 engine        = None
 SessionLocal  = None
 
+# Single source of truth for lookup tables.
+# To add a new lookup table, add an entry here — init_db_once, engine_from_url,
+# and tests will pick it up automatically.
+# Format: table_name -> dict of code -> description.
+LOOKUP_TABLES: dict[str, dict[str, str]] = {
+    "lookup_sexes": {
+        "M": "Male", "F": "Female", "NB": "Non-binary", "U": "Unknown",
+    },
+    "lookup_event_types": {
+        "BIRT": "Birth", "DEAT": "Death", "MARR": "Marriage",
+        "DIV": "Divorce", "BAPM": "Baptism", "CHR": "Christening",
+        "ADOP": "Adoption", "EVEN": "Other Event",
+        "STUD_START": "Study Start", "STUD_END": "Study End",
+        "WORK_START": "Work/Job Start", "WORK_END": "Work/Job End",
+        "RELOC": "Relocation To",
+    },
+    "lookup_media_types": {
+        "photo": "Photograph", "audio": "Audio", "video": "Video",
+    },
+    "lookup_family_roles": {
+        "husband": "Husband", "wife": "Wife", "partner": "Unmarried Partner",
+    },
+    "lookup_name_types": {
+        "birth": "Birth", "aka": "Also Known As",
+        "married": "Married", "maiden": "Maiden",
+    },
+    "lookup_date_approx_types": {
+        "ABT": "About", "CAL": "Calculated", "EST": "Estimated",
+        "BEF": "Before", "AFT": "After",
+        "BET": "Between X And Y", "FROM": "From X To Y",
+    },
+}
+
 
 def init_db_once(owner_info: Optional[Union[OwnerInfo, str]] = None):
     """
@@ -52,10 +85,31 @@ def init_db_once(owner_info: Optional[Union[OwnerInfo, str]] = None):
             connect_args={"check_same_thread": False}
         )
         Base.metadata.create_all(bind=engine)
+        _seed_lookup_tables(engine)
         _run_migrations(engine)
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     return engine
+
+
+def _seed_lookup_tables(eng):
+    """Create and populate lookup tables from LOOKUP_TABLES (idempotent).
+
+    These tables are not tracked by the ORM so Base.metadata.create_all() won't
+    create them.  LOOKUP_TABLES is the single source of truth — add new tables
+    there and they'll be created automatically.
+    """
+    with eng.connect() as conn:
+        for table_name, rows in LOOKUP_TABLES.items():
+            conn.execute(text(
+                f"CREATE TABLE IF NOT EXISTS {table_name} "
+                f"(code TEXT PRIMARY KEY, description TEXT NOT NULL)"))
+            for code, description in rows.items():
+                conn.execute(text(
+                    f"INSERT OR IGNORE INTO {table_name} (code, description) "
+                    f"VALUES (:code, :desc)"),
+                    {"code": code, "desc": description})
+        conn.commit()
 
 
 def _run_migrations(eng):
@@ -97,6 +151,7 @@ def engine_from_url(url: str, create_tables: bool = True):
     new_engine = create_engine(url, connect_args={"check_same_thread": False})
     if create_tables:
         Base.metadata.create_all(bind=new_engine)
+        _seed_lookup_tables(new_engine)
     return new_engine
 
 

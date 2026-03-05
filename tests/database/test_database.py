@@ -9,9 +9,10 @@ import pytest
 import sqlite3
 
 from tests.conftest import SOURCE_GEDCOM
-from tests.gedcom_utils import normalize_gedcom_text
+from tests.gedcom_utils import normalize_gedcom_text, write_minimal_gedcom
 
 import database.db
+from database.owner_info import OwnerInfo
 from database.gedcom_import import import_gedcom
 from database.gedcom_export import export_gedcom
 
@@ -157,3 +158,70 @@ class TestImportExportGedcom:
         # Cleanup export files
         export_file1.unlink()
         export_file2.unlink()
+
+
+class TestLookupTablesAfterImport:
+    """Regression: lookup tables must exist after import into a fresh database.
+
+    Bug: import_gedcom used engine_from_url which only ran
+    Base.metadata.create_all() — that doesn't create the lookup_* tables
+    (they're not ORM models). Tree view then crashed with
+    'no such table: lookup_event_types'.
+
+    Expected tables and codes are derived from database.db.LOOKUP_TABLES so
+    adding a new lookup table there is sufficient — this test will cover it
+    automatically.
+    """
+
+    def _assert_lookup_tables(self, db_path, log_test_step):
+        """Verify every lookup table from LOOKUP_TABLES exists with correct codes."""
+        from database.db import LOOKUP_TABLES
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        for table, rows in LOOKUP_TABLES.items():
+            cursor.execute(f"SELECT code FROM {table} ORDER BY code")
+            actual_codes = sorted(row[0] for row in cursor.fetchall())
+            expected_codes = sorted(rows.keys())
+            assert actual_codes == expected_codes, (
+                f"{table}: expected {expected_codes}, got {actual_codes}"
+            )
+            log_test_step(f"  {table}: {len(actual_codes)} rows OK")
+        conn.close()
+
+    def test_lookup_tables_after_import_into_fresh_db(self, test_temp_dir, log_test_step):
+        """Import a GEDCOM file into a brand-new database and verify lookup tables."""
+        log_test_step("Creating fresh owner (no pre-existing database)")
+
+        database.db.reset_engine()
+        owner = OwnerInfo(base_dir=test_temp_dir)
+        db_file = owner.db_file
+        if db_file.exists():
+            db_file.unlink()
+
+        ged_file = write_minimal_gedcom(test_temp_dir)
+
+        log_test_step("Running import_gedcom into fresh database")
+        success = import_gedcom(ged_file, db_file)
+        assert success, "import_gedcom failed"
+
+        log_test_step("Verifying lookup tables exist and are populated")
+        self._assert_lookup_tables(db_file, log_test_step)
+
+    def test_lookup_tables_after_reset_and_reinit(self, test_temp_dir, log_test_step):
+        """Simulate the post-import flow: reset_engine + init_db_once on a fresh DB."""
+        log_test_step("Creating fresh owner and importing")
+
+        owner = OwnerInfo(base_dir=test_temp_dir)
+        ged_file = write_minimal_gedcom(test_temp_dir)
+
+        success = import_gedcom(ged_file, owner.db_file)
+        assert success
+
+        log_test_step("Simulating post-import engine reset + reinit")
+        database.db.reset_engine()
+        database.db.init_db_once(owner)
+
+        log_test_step("Verifying lookup tables survive reset_engine + init_db_once")
+        self._assert_lookup_tables(owner.db_file, log_test_step)
+
+        database.db.reset_engine()

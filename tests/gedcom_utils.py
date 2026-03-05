@@ -1,9 +1,67 @@
 #!/usr/bin/env python3
 """
-Shared GEDCOM utilities for tests.
+Shared GEDCOM utilities and test data for tests.
 """
 
 from pathlib import Path
+
+# Minimal but representative GEDCOM for tests that need importable data.
+# Covers: header, submitter, two individuals (M/F), one family with a child,
+# birth/death events, marriage, and a media reference.
+MINIMAL_GEDCOM = """\
+0 HEAD
+1 SOUR TEST
+2 NAME Test Suite
+2 VERS 1.0
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 SUBM @U1@
+0 @U1@ SUBM
+1 NAME Test Runner
+0 @I1@ INDI
+1 NAME John /Doe/
+1 SEX M
+1 BIRT
+2 DATE 01 JAN 1960
+2 PLAC Springfield
+1 DEAT
+2 DATE 15 MAR 2020
+2 PLAC Shelbyville
+1 OBJE
+2 FILE media/john_35.jpg
+2 FORM photo
+2 TITL Portrait at 35
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Jane /Smith/
+1 SEX F
+1 BIRT
+2 DATE 22 JUL 1962
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Jimmy /Doe/
+1 SEX M
+1 BIRT
+2 DATE 05 SEP 1990
+1 FAMC @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+1 MARR
+2 DATE 30 JUN 1985
+2 PLAC City Hall
+0 TRLR
+"""
+
+
+def write_minimal_gedcom(directory: Path) -> Path:
+    """Write MINIMAL_GEDCOM to a file in directory, return its Path."""
+    ged_file = directory / "minimal.ged"
+    ged_file.write_text(MINIMAL_GEDCOM, encoding="utf-8")
+    return ged_file
 
 
 def compare_gedcom_files(expected_path: Path, actual_path: Path) -> tuple[bool, str]:
