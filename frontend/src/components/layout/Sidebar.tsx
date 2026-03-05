@@ -6,6 +6,8 @@ import {
   GitBranch,
   Table2,
   Download,
+  Upload,
+  ArrowLeftRight,
   Settings,
   ChevronDown,
 } from 'lucide-react';
@@ -126,11 +128,18 @@ export function Sidebar() {
           />
         </NavGroup>
 
-        <NavItem
-          to="/export"
-          icon={<Download className="w-5 h-5" />}
-          label="Export"
-        />
+        <NavGroup icon={<ArrowLeftRight className="w-5 h-5" />} label="Data Exchange">
+          <NavItem
+            to="/export"
+            icon={<Download className="w-5 h-5" />}
+            label="Export"
+          />
+          <NavItem
+            to="/import"
+            icon={<Upload className="w-5 h-5" />}
+            label="Import"
+          />
+        </NavGroup>
 
         <NavItem
           to="/settings"

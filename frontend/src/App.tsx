@@ -20,6 +20,7 @@ import { FamilyFormPage } from './pages/families/FamilyFormPage';
 import { BulkEditIndividualsPage } from './pages/bulk-edit/BulkEditIndividualsPage';
 import { BulkEditFamiliesPage } from './pages/bulk-edit/BulkEditFamiliesPage';
 import { ExportPage } from './pages/export/ExportPage';
+import { ImportPage } from './pages/import/ImportPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 
 // Lazy-load tree pages (heavy dependency: @xyflow/react)
@@ -154,8 +155,9 @@ function App() {
               <Route path="bulk-edit/individuals" element={<BulkEditIndividualsPage />} />
               <Route path="bulk-edit/families" element={<BulkEditFamiliesPage />} />
 
-              {/* Export */}
+              {/* Data Exchange */}
               <Route path="export" element={<ExportPage />} />
+              <Route path="import" element={<ImportPage />} />
 
               {/* Settings */}
               <Route path="settings" element={<SettingsPage />} />

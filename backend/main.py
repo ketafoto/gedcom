@@ -20,7 +20,7 @@ from sqlalchemy import text
 
 from database import db
 from database.owner_info import OwnerInfo
-from backend.api import individuals, families, events, media, header, auth, types, export, tree
+from backend.api import individuals, families, events, media, header, auth, types, export, import_api, tree
 from backend.config import settings
 from backend.logging import setup_logging
 
@@ -151,6 +151,7 @@ app.include_router(events.router)
 app.include_router(media.router)
 app.include_router(header.router)
 app.include_router(export.router)
+app.include_router(import_api.router)
 app.include_router(tree.router)
 app.include_router(tree.full_tree_router)
 
