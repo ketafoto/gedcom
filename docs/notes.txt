@@ -179,3 +179,4 @@ change DEFAULT_OWNER_ID in backend/api/auth.py
 
 
 
+On ImprtPhotodialog move all controls - age, OK/Cancle to be on right side near the photo frame - where the Tree Preview is located!
