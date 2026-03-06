@@ -125,12 +125,12 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
     isDefault,
     sourceMediaId,
   }: {
-    blob: Blob;
+    blob?: Blob;
     age: number;
     isDefault: boolean;
     sourceMediaId?: number;
   }) => {
-    if (sourceMediaId) {
+    if (sourceMediaId && blob) {
       await mediaApi.recropPhoto({
         media_id: sourceMediaId,
         file: blob,
@@ -138,7 +138,13 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
         is_default: isDefault,
       });
       toast.success('Photo updated');
-    } else {
+    } else if (sourceMediaId) {
+      await mediaApi.update(sourceMediaId, {
+        age_on_photo: age,
+        is_default: isDefault,
+      });
+      toast.success('Photo updated');
+    } else if (blob) {
       await mediaApi.uploadPhoto({
         file: blob,
         individual_id: Number(id),

@@ -23,7 +23,7 @@ interface PhotoUploadDialogProps {
   initialAge?: number;
   initialIsDefault?: boolean;
   onUpload: (params: {
-    blob: Blob;
+    blob?: Blob;
     age: number;
     isDefault: boolean;
     sourceMediaId?: number;
@@ -50,6 +50,7 @@ export function PhotoUploadDialog({
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
   const [rotation, setRotation] = useState(0);
+  const [imageModified, setImageModified] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -67,6 +68,7 @@ export function PhotoUploadDialog({
     setBrightness(100);
     setContrast(100);
     setRotation(0);
+    setImageModified(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [initialImageSrc, initialAge, initialIsDefault, sourceMediaId]);
 
@@ -80,6 +82,7 @@ export function PhotoUploadDialog({
       setImageSrc(URL.createObjectURL(file));
       setCrop(undefined);
       setCompletedCrop(undefined);
+      setImageModified(true);
     },
     [],
   );
@@ -207,8 +210,6 @@ export function PhotoUploadDialog({
   /* ---- submit ---- */
 
   const handleOk = useCallback(async () => {
-    if (!imageSrc || !completedCrop || !imgRef.current) return;
-
     const ageNum = parseInt(age, 10);
     if (isNaN(ageNum) || ageNum < 0 || ageNum > 150) {
       setError('Please enter a valid age (0\u2013150)');
@@ -218,22 +219,22 @@ export function PhotoUploadDialog({
     setIsUploading(true);
     setError('');
     try {
-      const img = imgRef.current;
-      const scaleX = img.naturalWidth / img.width;
-      const scaleY = img.naturalHeight / img.height;
+      if (sourceMediaId && !imageModified) {
+        await onUpload({ age: ageNum, isDefault, sourceMediaId });
+      } else {
+        if (!imageSrc || !completedCrop || !imgRef.current) return;
+        const img = imgRef.current;
+        const scaleX = img.naturalWidth / img.width;
+        const scaleY = img.naturalHeight / img.height;
 
-      const blob = await getCroppedBlob(imageSrc, {
-        x: completedCrop.x * scaleX,
-        y: completedCrop.y * scaleY,
-        width: completedCrop.width * scaleX,
-        height: completedCrop.height * scaleY,
-      }, undefined, undefined, undefined, subjectScale, brightness / 100, contrast / 100, rotation);
-      await onUpload({
-        blob,
-        age: ageNum,
-        isDefault,
-        sourceMediaId,
-      });
+        const blob = await getCroppedBlob(imageSrc, {
+          x: completedCrop.x * scaleX,
+          y: completedCrop.y * scaleY,
+          width: completedCrop.width * scaleX,
+          height: completedCrop.height * scaleY,
+        }, undefined, undefined, undefined, subjectScale, brightness / 100, contrast / 100, rotation);
+        await onUpload({ blob, age: ageNum, isDefault, sourceMediaId });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
       setIsUploading(false);
@@ -245,6 +246,7 @@ export function PhotoUploadDialog({
     isDefault,
     onUpload,
     sourceMediaId,
+    imageModified,
     subjectScale,
     rotation,
     brightness,
@@ -294,7 +296,7 @@ export function PhotoUploadDialog({
                   <div className="bg-gray-900 rounded-xl overflow-hidden inline-block">
                     <ReactCrop
                       crop={crop}
-                      onChange={(_, pc) => setCrop(pc)}
+                      onChange={(_, pc) => { setCrop(pc); setImageModified(true); }}
                       onComplete={(c) => setCompletedCrop(c)}
                       aspect={PORTRAIT_ASPECT}
                       keepSelection
@@ -381,14 +383,27 @@ export function PhotoUploadDialog({
                       className="rounded-xl overflow-hidden ring-2 ring-gray-300 bg-gray-100"
                       style={{ width: PREVIEW_W, height: PREVIEW_H }}
                     >
-                      <canvas
-                        ref={previewCanvasRef}
-                        style={{
-                          width: PREVIEW_W,
-                          height: PREVIEW_H,
-                          display: 'block',
-                        }}
-                      />
+                      {sourceMediaId && !imageModified && initialImageSrc ? (
+                        <img
+                          src={initialImageSrc}
+                          alt="Current photo"
+                          style={{
+                            width: PREVIEW_W,
+                            height: PREVIEW_H,
+                            objectFit: 'cover',
+                            display: 'block',
+                          }}
+                        />
+                      ) : (
+                        <canvas
+                          ref={previewCanvasRef}
+                          style={{
+                            width: PREVIEW_W,
+                            height: PREVIEW_H,
+                            display: 'block',
+                          }}
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -403,9 +418,10 @@ export function PhotoUploadDialog({
                         max={100}
                         step={1}
                         value={Math.round(subjectScale * 100)}
-                        onChange={(e) =>
-                          setSubjectScale(Number(e.target.value) / 100)
-                        }
+                        onChange={(e) => {
+                          setSubjectScale(Number(e.target.value) / 100);
+                          setImageModified(true);
+                        }}
                         className="w-full accent-emerald-600"
                       />
                       <p className="text-xs text-gray-500 mt-1">
@@ -423,7 +439,7 @@ export function PhotoUploadDialog({
                         max={30}
                         step={1}
                         value={rotation}
-                        onChange={(e) => setRotation(Number(e.target.value))}
+                        onChange={(e) => { setRotation(Number(e.target.value)); setImageModified(true); }}
                         className="w-full accent-emerald-600"
                       />
                       <p className="text-xs text-gray-500 mt-1">{rotation}°</p>
@@ -439,7 +455,7 @@ export function PhotoUploadDialog({
                         max={150}
                         step={1}
                         value={brightness}
-                        onChange={(e) => setBrightness(Number(e.target.value))}
+                        onChange={(e) => { setBrightness(Number(e.target.value)); setImageModified(true); }}
                         className="w-full accent-emerald-600"
                       />
                       <p className="text-xs text-gray-500 mt-1">{brightness}%</p>
@@ -455,7 +471,7 @@ export function PhotoUploadDialog({
                         max={150}
                         step={1}
                         value={contrast}
-                        onChange={(e) => setContrast(Number(e.target.value))}
+                        onChange={(e) => { setContrast(Number(e.target.value)); setImageModified(true); }}
                         className="w-full accent-emerald-600"
                       />
                       <p className="text-xs text-gray-500 mt-1">{contrast}%</p>
@@ -527,7 +543,11 @@ export function PhotoUploadDialog({
           <Button
             variant="primary"
             onClick={handleOk}
-            disabled={!imageSrc || !completedCrop || !age || isUploading}
+            disabled={
+              (sourceMediaId && !imageModified)
+                ? !age || isUploading
+                : !imageSrc || !completedCrop || !age || isUploading
+            }
             isLoading={isUploading}
           >
             OK
