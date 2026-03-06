@@ -7,11 +7,10 @@ interface PersonTooltipProps {
 }
 
 /**
- * Floating tooltip showing the person's life events as a chronological story.
+ * Floating tooltip showing a person's summary: birth, death, life events, notes.
  * Rendered via portal so it's not clipped by React Flow's viewport.
  */
 export function PersonTooltip({ data, position }: PersonTooltipProps) {
-  // Position the tooltip offset from the cursor, flip if near viewport edge
   const tooltipWidth = 300;
   const tooltipMaxHeight = 320;
   const offsetX = 16;
@@ -20,11 +19,9 @@ export function PersonTooltip({ data, position }: PersonTooltipProps) {
   let left = position.x + offsetX;
   let top = position.y + offsetY;
 
-  // Flip horizontally if it would overflow
   if (left + tooltipWidth > window.innerWidth - 20) {
     left = position.x - tooltipWidth - offsetX;
   }
-  // Flip vertically if it would overflow
   if (top + tooltipMaxHeight > window.innerHeight - 20) {
     top = position.y - tooltipMaxHeight - offsetY;
   }
@@ -34,6 +31,14 @@ export function PersonTooltip({ data, position }: PersonTooltipProps) {
     if (approxDate) return approxDate;
     return '';
   };
+
+  const birthDate = formatDate(data.birth_date, data.birth_date_approx);
+  const deathDate = formatDate(data.death_date, data.death_date_approx);
+  const hasBirth = birthDate || data.birth_place;
+  const hasDeath = deathDate || data.death_place;
+  const hasEvents = data.events.length > 0;
+  const hasNotes = !!data.notes;
+  const hasAnyContent = hasBirth || hasDeath || hasEvents || hasNotes;
 
   return createPortal(
     <div
@@ -45,7 +50,7 @@ export function PersonTooltip({ data, position }: PersonTooltipProps) {
         style={{ width: tooltipWidth }}
       >
         {/* Header */}
-        <div className="mb-2 pb-2 border-b border-gray-100">
+        <div className={hasAnyContent ? "mb-2 pb-2 border-b border-gray-100" : ""}>
           <p className="font-semibold text-sm text-gray-900">
             {data.display_name}
           </p>
@@ -54,34 +59,67 @@ export function PersonTooltip({ data, position }: PersonTooltipProps) {
           )}
         </div>
 
-        {/* Events timeline */}
-        <div className="space-y-1.5">
-          {data.events.map((event, idx) => {
-            const date = formatDate(event.event_date, event.event_date_approx);
-            return (
-              <div key={idx} className="flex gap-2 text-xs">
-                <div className="flex-shrink-0 mt-0.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                </div>
-                <div className="min-w-0">
-                  <span className="font-medium text-gray-700">
-                    {date && <span className="text-gray-500 mr-1">{date}</span>}
-                    {event.event_type}
-                  </span>
-                  {event.event_place && (
-                    <p className="text-gray-400 truncate">{event.event_place}</p>
-                  )}
-                  {event.description && (
-                    <p className="text-gray-400 italic">{event.description}</p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {/* Birth */}
+        {hasBirth && (
+          <div className="mb-1.5 text-xs">
+            <span className="font-medium text-gray-700">Born</span>
+            {birthDate && <span className="text-gray-500 ml-1">{birthDate}</span>}
+            {data.birth_place && (
+              <span className="text-gray-400 ml-1">— {data.birth_place}</span>
+            )}
+          </div>
+        )}
 
-        {data.events.length === 0 && (
-          <p className="text-xs text-gray-400 italic">No events recorded</p>
+        {/* Death */}
+        {hasDeath && (
+          <div className="mb-1.5 text-xs">
+            <span className="font-medium text-gray-700">Died</span>
+            {deathDate && <span className="text-gray-500 ml-1">{deathDate}</span>}
+            {data.death_place && (
+              <span className="text-gray-400 ml-1">— {data.death_place}</span>
+            )}
+          </div>
+        )}
+
+        {/* Events */}
+        {hasEvents && (
+          <div className={(hasBirth || hasDeath) ? "mt-2 pt-2 border-t border-gray-100 space-y-1.5" : "space-y-1.5"}>
+            {data.events.map((event, idx) => {
+              const date = formatDate(event.event_date, event.event_date_approx);
+              return (
+                <div key={idx} className="flex gap-2 text-xs">
+                  <div className="flex-shrink-0 mt-0.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-medium text-gray-700">
+                      {date && <span className="text-gray-500 mr-1">{date}</span>}
+                      {event.event_type}
+                    </span>
+                    {event.event_place && (
+                      <p className="text-gray-400 truncate">{event.event_place}</p>
+                    )}
+                    {event.description && (
+                      <p className="text-gray-400 italic">{event.description}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Notes */}
+        {hasNotes && (
+          <div className={(hasBirth || hasDeath || hasEvents) ? "mt-2 pt-2 border-t border-gray-100" : ""}>
+            <p className="text-xs text-gray-400 italic whitespace-pre-line line-clamp-4">
+              {data.notes}
+            </p>
+          </div>
+        )}
+
+        {!hasAnyContent && (
+          <p className="text-xs text-gray-400 italic">No details recorded</p>
         )}
       </div>
     </div>,

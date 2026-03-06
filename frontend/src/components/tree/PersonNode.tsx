@@ -120,7 +120,7 @@ export const PersonNode = memo(function PersonNode({
         </div>
       </div>
 
-      {showTooltip && data.events.length > 0 && (
+      {showTooltip && (
         <PersonTooltip
           data={data}
           position={tooltipPos}

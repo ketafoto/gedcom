@@ -223,8 +223,11 @@ export interface TreeNode {
   display_name: string;
   birth_date?: string;
   birth_date_approx?: string;
+  birth_place?: string;
   death_date?: string;
   death_date_approx?: string;
+  death_place?: string;
+  notes?: string;
   photo_url?: string;
   photos: TreeNodePhoto[];
   generation: number;

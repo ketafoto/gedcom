@@ -230,8 +230,11 @@ class TreeNode(BaseModel):
     display_name: str
     birth_date: Optional[str] = None
     birth_date_approx: Optional[str] = None
+    birth_place: Optional[str] = None
     death_date: Optional[str] = None
     death_date_approx: Optional[str] = None
+    death_place: Optional[str] = None
+    notes: Optional[str] = None
     photo_url: Optional[str] = None
     photos: List[TreeNodePhoto] = []
     generation: int
