@@ -33,7 +33,6 @@ from database.models import (
 from database.owner_info import OwnerInfo
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from backend.api.api_utils import generate_family_note
 
 # GEDCOM event tags for individuals
 INDI_EVENT_TAGS = {
@@ -679,14 +678,6 @@ def import_gedcom(gedcom_file: Path, db_file: Path) -> bool:
                         fam_create.children.append(schemas.FamilyChildCreate(
                             child_id=gedcom_to_db_id[child_id]
                         ))
-
-                # Generate note if not provided
-                if not fam_create.notes:
-                    members_list = [{"individual_id": m.individual_id, "role": m.role} for m in fam_create.members]
-                    children_list = [{"child_id": c.child_id} for c in fam_create.children]
-                    generated_note = generate_family_note(db, members_list, children_list, fam_create.family_type)
-                    if generated_note:
-                        fam_create.notes = generated_note
 
                 db_fam = _create_family(fam_create, db)
                 family_to_db_id[gedcom_id] = db_fam.id

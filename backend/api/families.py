@@ -6,7 +6,7 @@ from typing import List
 from .. import schemas
 import database.models
 import database.db
-from .api_utils import generate_gedcom_id, generate_family_note
+from .api_utils import generate_gedcom_id
 from .auth import require_admin
 
 router = APIRouter(prefix="/families", tags=["families"])
@@ -28,20 +28,13 @@ def create_family(
         if existing:
             raise HTTPException(status_code=400, detail="GEDCOM ID already exists")
 
-    # Generate note if not provided
-    notes = family.notes
-    if not notes:
-        members_list = [{"individual_id": m.individual_id, "role": m.role} for m in family.members]
-        children_list = [{"child_id": c.child_id} for c in family.children]
-        notes = generate_family_note(db, members_list, children_list, family.family_type)
-
     db_family = database.models.Family(
         gedcom_id=gedcom_id,
         marriage_date=family.marriage_date,
         marriage_place=family.marriage_place,
         divorce_date=family.divorce_date,
         family_type=family.family_type or "marriage",
-        notes=notes,
+        notes=family.notes,
     )
 
     # Add members
@@ -118,10 +111,6 @@ def update_family(
 
     update_data = family_update.model_dump(exclude_unset=True)
 
-    # Track if members/children are being updated (for note regeneration)
-    members_updated = "members" in update_data
-    children_updated = "children" in update_data
-
     for key, value in update_data.items():
         if key == "members":
             if value is not None:
@@ -144,22 +133,8 @@ def update_family(
                         family=family,
                     )
                     db.add(db_child)
-        elif key == "notes":
-            # If notes is explicitly set to empty/None, generate them
-            if not value:
-                # Generate note based on current family state
-                members_list = [{"individual_id": m.individual_id, "role": m.role} for m in family.members]
-                children_list = [{"child_id": c.child_id} for c in family.children]
-                value = generate_family_note(db, members_list, children_list, family.family_type)
-            setattr(family, key, value)
         elif hasattr(family, key):
             setattr(family, key, value)
-
-    # If members/children were updated and notes are currently empty, regenerate notes
-    if (members_updated or children_updated) and not family.notes:
-        members_list = [{"individual_id": m.individual_id, "role": m.role} for m in family.members]
-        children_list = [{"child_id": c.child_id} for c in family.children]
-        family.notes = generate_family_note(db, members_list, children_list, family.family_type)
 
     db.commit()
     db.refresh(family)

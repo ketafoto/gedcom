@@ -231,7 +231,6 @@
 1 CHIL @I00003@
 1 CHIL @I00004@
 1 CHIL @I00005@
-1 NOTE Family of Igor Novoseltsev and Alona Tovkun
 0 @F00002@ FAM
 1 HUSB @I00006@
 1 WIFE @I00007@
@@ -239,7 +238,6 @@
 2 DATE ABT 1970
 1 CHIL @I00001@
 1 CHIL @I00008@
-1 NOTE Parents of Igor Novoseltsev and Marina Obedina
 0 @F00003@ FAM
 1 HUSB @I00009@
 1 WIFE @I00008@
@@ -248,33 +246,26 @@
 1 CHIL @I00010@
 1 CHIL @I00011@
 1 CHIL @I00012@
-1 NOTE Family of Marina Obedina and Vladimir Obedin
 0 @F00004@ FAM
 1 HUSB @I00013@
 1 WIFE @I00012@
 1 MARR
 2 DATE ABT 2023
-1 NOTE Marriage of Valeria Obedin and Baruch Yakobov
 0 @F00005@ FAM
 1 HUSB @I00014@
 1 WIFE @I00010@
-1 NOTE Same-sex marriage of Omer Bar and Viacheslav Obedin
 0 @F00020@ FAM
 1 HUSB @I00021@
 1 WIFE @I00022@
 1 CHIL @I00006@
-1 NOTE Parents of Mihail Novoseltsev (grandparents of Igor)
 0 @F00021@ FAM
 1 HUSB @I00023@
 1 WIFE @I00015@
 1 CHIL @I00007@
 1 CHIL @I00019@
 1 CHIL @I00020@
-1 NOTE Parents of Ludmila Kriulina
 0 @F00022@ FAM
 1 WIFE @I00015@
-1 NOTE Family information for extended genealogy
 0 @F00030@ FAM
 1 CHIL @I00002@
-1 NOTE Parents of Alona Tovkun (family details unknown)
 0 TRLR
