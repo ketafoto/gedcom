@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, UserPlus } from 'lucide-react';
 import { familiesApi } from '../../api/families';
 import { individualsApi } from '../../api/individuals';
 import { typesApi } from '../../api/types';
@@ -11,9 +11,11 @@ import { Input } from '../../components/common/Input';
 import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
 import { ApproxDateInput } from '../../components/common/ApproxDateInput';
+import { ComboSelect } from '../../components/common/ComboSelect';
+import { IndividualFormDialog } from '../../components/individuals/IndividualFormDialog';
 import toast from 'react-hot-toast';
+import type { Individual } from '../../types/models';
 
-// Form data type - using simple types for form fields
 interface FamilyFormData {
   gedcom_id?: string;
   marriage_date?: string;
@@ -27,6 +29,8 @@ interface FamilyFormData {
   children: Array<{ child_id: number }>;
 }
 
+type CreateTarget = 'member' | 'child';
+
 export function FamilyFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -34,22 +38,38 @@ export function FamilyFormPage() {
   const queryClient = useQueryClient();
   const isEditing = !!id;
 
-  // Get pre-selected members from URL (for "Create Family" from bulk select)
-  const preSelectedMembers = searchParams.get('members')?.split(',').map(Number).filter(Boolean) || [];
+  const preSelectedMembers =
+    searchParams
+      .get('members')
+      ?.split(',')
+      .map(Number)
+      .filter(Boolean) || [];
 
-  // Fetch individuals for dropdowns
+  // --- state for "create individual" dialog ---
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const createTargetRef = useRef<CreateTarget>('member');
+  const [createdIndividualIds, setCreatedIndividualIds] = useState<number[]>(
+    []
+  );
+  const [focusMemberIndex, setFocusMemberIndex] = useState<number | null>(null);
+  const [focusChildIndex, setFocusChildIndex] = useState<number | null>(null);
+
+  // --- data queries ---
   const { data: individuals } = useQuery({
     queryKey: ['individuals'],
     queryFn: () => individualsApi.list(),
   });
 
-  // Fetch family roles for dropdown
   const { data: familyRoles } = useQuery({
     queryKey: ['types', 'family-roles'],
     queryFn: typesApi.getFamilyRoles,
   });
 
-  // Fetch existing family if editing
+  const { data: familyTypes } = useQuery({
+    queryKey: ['types', 'family-types'],
+    queryFn: typesApi.getFamilyTypes,
+  });
+
   const { data: family, isLoading: loadingFamily } = useQuery({
     queryKey: ['families', id],
     queryFn: () => familiesApi.get(Number(id)),
@@ -61,6 +81,7 @@ export function FamilyFormPage() {
     queryFn: typesApi.getDateApproxTypes,
   });
 
+  // --- form setup ---
   const {
     register,
     control,
@@ -69,7 +90,10 @@ export function FamilyFormPage() {
     formState: { isSubmitting },
   } = useForm<FamilyFormData>({
     defaultValues: {
-      members: preSelectedMembers.map((memberId) => ({ individual_id: memberId, role: '' })),
+      members: preSelectedMembers.map((memberId) => ({
+        individual_id: memberId,
+        role: '',
+      })),
       children: [],
     },
   });
@@ -78,21 +102,14 @@ export function FamilyFormPage() {
     fields: memberFields,
     append: appendMember,
     remove: removeMember,
-  } = useFieldArray({
-    control,
-    name: 'members',
-  });
+  } = useFieldArray({ control, name: 'members' });
 
   const {
     fields: childFields,
     append: appendChild,
     remove: removeChild,
-  } = useFieldArray({
-    control,
-    name: 'children',
-  });
+  } = useFieldArray({ control, name: 'children' });
 
-  // Populate form when editing
   useEffect(() => {
     if (family) {
       reset({
@@ -108,13 +125,12 @@ export function FamilyFormPage() {
           individual_id: m.individual_id,
           role: m.role || '',
         })),
-        children: family.children.map((c) => ({
-          child_id: c.child_id,
-        })),
+        children: family.children.map((c) => ({ child_id: c.child_id })),
       });
     }
   }, [family, reset]);
 
+  // --- mutations ---
   const createMutation = useMutation({
     mutationFn: familiesApi.create,
     onSuccess: (data) => {
@@ -128,8 +144,8 @@ export function FamilyFormPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: FamilyFormData }) =>
-      familiesApi.update(id, data),
+    mutationFn: ({ fid, data }: { fid: number; data: FamilyFormData }) =>
+      familiesApi.update(fid, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['families'] });
       toast.success('Family updated successfully');
@@ -142,7 +158,7 @@ export function FamilyFormPage() {
 
   const onSubmit = async (data: FamilyFormData) => {
     if (isEditing) {
-      updateMutation.mutate({ id: Number(id), data });
+      updateMutation.mutate({ fid: Number(id), data });
     } else {
       createMutation.mutate({
         ...data,
@@ -157,16 +173,94 @@ export function FamilyFormPage() {
     }
   };
 
-  // Helper to get individual name
+  // --- helpers ---
   const getIndividualName = (individualId: number) => {
     const individual = individuals?.find((i) => i.id === individualId);
     if (!individual) return `ID: ${individualId}`;
     const name = individual.names[0];
     return name
-      ? `${name.given_name || ''} ${name.family_name || ''}`.trim() || 'Unnamed'
+      ? `${name.given_name || ''} ${name.family_name || ''}`.trim() ||
+          'Unnamed'
       : 'Unnamed';
   };
 
+  const sortedIndividuals = useMemo(
+    () =>
+      individuals
+        ?.slice()
+        .sort((a, b) => getIndividualName(a.id).localeCompare(getIndividualName(b.id))) ?? [],
+    [individuals]
+  );
+
+  // --- auto-focus newly added selects ---
+  useEffect(() => {
+    if (focusMemberIndex !== null) {
+      requestAnimationFrame(() => {
+        const sel = document.querySelector<HTMLSelectElement>(
+          `select[name="members.${focusMemberIndex}.individual_id"]`
+        );
+        sel?.focus();
+        sel?.showPicker?.();
+      });
+      setFocusMemberIndex(null);
+    }
+  }, [focusMemberIndex]);
+
+  useEffect(() => {
+    if (focusChildIndex !== null) {
+      requestAnimationFrame(() => {
+        const sel = document.querySelector<HTMLSelectElement>(
+          `select[name="children.${focusChildIndex}.child_id"]`
+        );
+        sel?.focus();
+        sel?.showPicker?.();
+      });
+      setFocusChildIndex(null);
+    }
+  }, [focusChildIndex]);
+
+  // --- "create individual" dialog handlers ---
+  const openCreateDialog = useCallback((target: CreateTarget) => {
+    createTargetRef.current = target;
+    setDialogOpen(true);
+  }, []);
+
+  const handleIndividualCreated = useCallback(
+    (individual: Individual) => {
+      setCreatedIndividualIds((prev) => [...prev, individual.id]);
+      setDialogOpen(false);
+
+      if (createTargetRef.current === 'member') {
+        appendMember({ individual_id: individual.id, role: '' });
+      } else {
+        appendChild({ child_id: individual.id });
+      }
+    },
+    [appendMember, appendChild]
+  );
+
+  // --- cancel with cleanup ---
+  const handleCancel = useCallback(async () => {
+    if (createdIndividualIds.length > 0) {
+      const doDelete = window.confirm(
+        `You created ${createdIndividualIds.length} individual(s) during this session.\n\nDo you want to delete them as well?`
+      );
+      if (doDelete) {
+        try {
+          await Promise.all(
+            createdIndividualIds.map((iid) => individualsApi.delete(iid))
+          );
+          queryClient.invalidateQueries({ queryKey: ['individuals'] });
+          toast.success('Created individuals deleted');
+        } catch {
+          toast.error('Some individuals could not be deleted');
+        }
+      }
+    }
+    navigate(-1);
+  }, [createdIndividualIds, navigate, queryClient]);
+
+  // --- render ---
   if (isEditing && loadingFamily) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -190,7 +284,9 @@ export function FamilyFormPage() {
             {isEditing ? 'Edit Family' : 'New Family'}
           </h1>
           <p className="text-gray-600 mt-1">
-            {isEditing ? 'Update family information' : 'Create a new family unit'}
+            {isEditing
+              ? 'Update family information'
+              : 'Create a new family unit'}
           </p>
         </div>
       </div>
@@ -204,15 +300,17 @@ export function FamilyFormPage() {
               {...register('gedcom_id')}
               helperText="Leave blank to auto-generate"
             />
-            <Input
+            <ComboSelect
               label="Family Type"
               {...register('family_type')}
-              helperText="e.g., married, civil union"
+              options={familyTypes}
+              placeholder="Select or type..."
+              helperText="e.g., marriage, civil_union, or custom value"
             />
           </div>
         </Card>
 
-        {/* Members Section */}
+        {/* Spouses / Partners */}
         <Card title="Spouses / Partners">
           <div className="space-y-4">
             {memberFields.map((field, index) => (
@@ -230,51 +328,54 @@ export function FamilyFormPage() {
                       className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     >
                       <option value="">Select individual...</option>
-                      {individuals?.map((ind) => (
+                      {sortedIndividuals.map((ind) => (
                         <option key={ind.id} value={ind.id}>
                           {getIndividualName(ind.id)} ({ind.gedcom_id})
                         </option>
                       ))}
                     </select>
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Role
-                    </label>
-                    <select
-                      {...register(`members.${index}.role`)}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    >
-                      <option value="">Select role...</option>
-                      {familyRoles?.map((role) => (
-                        <option key={role.code} value={role.code}>
-                          {role.description} ({role.code})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <ComboSelect
+                    label="Role"
+                    {...register(`members.${index}.role`)}
+                    options={familyRoles}
+                    placeholder="Select or type..."
+                  />
                 </div>
                 <button
                   type="button"
                   onClick={() => removeMember(index)}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors mt-6"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             ))}
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => appendMember({ individual_id: 0, role: '' })}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Spouse / Partner
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  appendMember({ individual_id: 0, role: '' });
+                  setFocusMemberIndex(memberFields.length);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Spouse / Partner
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => openCreateDialog('member')}
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Create Spouse / Partner
+              </Button>
+            </div>
           </div>
         </Card>
 
-        {/* Children Section */}
+        {/* Children */}
         <Card title="Children">
           <div className="space-y-4">
             {childFields.map((field, index) => (
@@ -291,7 +392,7 @@ export function FamilyFormPage() {
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   >
                     <option value="">Select individual...</option>
-                    {individuals?.map((ind) => (
+                    {sortedIndividuals.map((ind) => (
                       <option key={ind.id} value={ind.id}>
                         {getIndividualName(ind.id)} ({ind.gedcom_id})
                       </option>
@@ -307,18 +408,31 @@ export function FamilyFormPage() {
                 </button>
               </div>
             ))}
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => appendChild({ child_id: 0 })}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Child
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  appendChild({ child_id: 0 });
+                  setFocusChildIndex(childFields.length);
+                }}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Child
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => openCreateDialog('child')}
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Create Child
+              </Button>
+            </div>
           </div>
         </Card>
 
-        {/* Marriage Information */}
+        {/* Marriage */}
         <Card title="Marriage">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
@@ -347,7 +461,7 @@ export function FamilyFormPage() {
           </div>
         </Card>
 
-        {/* Divorce Information */}
+        {/* Divorce */}
         <Card title="Divorce (if applicable)">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
@@ -382,11 +496,7 @@ export function FamilyFormPage() {
 
         {/* Submit */}
         <div className="flex items-center justify-end gap-4">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate(-1)}
-          >
+          <Button type="button" variant="secondary" onClick={handleCancel}>
             Cancel
           </Button>
           <Button type="submit" isLoading={isSubmitting}>
@@ -394,7 +504,13 @@ export function FamilyFormPage() {
           </Button>
         </div>
       </form>
+
+      {/* Create Individual Dialog */}
+      <IndividualFormDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onCreated={handleIndividualCreated}
+      />
     </div>
   );
 }
-

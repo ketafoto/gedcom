@@ -27,6 +27,14 @@ export const typesApi = {
   },
 
   /**
+   * Get family types for dropdown
+   */
+  getFamilyTypes: async (): Promise<LookupType[]> => {
+    const response = await apiClient.get<LookupType[]>('/types/family-types');
+    return response.data;
+  },
+
+  /**
    * Get family member roles for dropdown
    */
   getFamilyRoles: async (): Promise<LookupType[]> => {

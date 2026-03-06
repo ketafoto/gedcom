@@ -50,6 +50,11 @@ LOOKUP_TABLES: dict[str, dict[str, str]] = {
     "lookup_family_roles": {
         "husband": "Husband", "wife": "Wife", "partner": "Unmarried Partner",
     },
+    "lookup_family_types": {
+        "marriage": "Marriage", "civil_union": "Civil Union",
+        "domestic_partnership": "Domestic Partnership",
+        "common_law": "Common-law Marriage", "other": "Other",
+    },
     "lookup_name_types": {
         "birth": "Birth", "aka": "Also Known As",
         "married": "Married", "maiden": "Maiden",

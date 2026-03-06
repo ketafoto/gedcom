@@ -76,6 +76,20 @@ def get_family_roles():
     return [LookupType(code=row[0], description=row[1]) for row in rows]
 
 
+@router.get("/family-types", response_model=List[LookupType])
+def get_family_types():
+    """Get all family type codes for dropdowns."""
+    engine = db.init_db_once()
+
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("SELECT code, description FROM lookup_family_types ORDER BY code")
+        )
+        rows = result.fetchall()
+
+    return [LookupType(code=row[0], description=row[1]) for row in rows]
+
+
 @router.get("/name-types", response_model=List[LookupType])
 def get_name_types():
     """Get all name types for dropdowns."""

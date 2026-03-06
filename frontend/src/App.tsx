@@ -65,6 +65,10 @@ function PrefetchTypes() {
       queryFn: typesApi.getFamilyRoles,
     });
     void queryClient.prefetchQuery({
+      queryKey: ['types', 'family-types'],
+      queryFn: typesApi.getFamilyTypes,
+    });
+    void queryClient.prefetchQuery({
       queryKey: ['types', 'name-types'],
       queryFn: typesApi.getNameTypes,
     });
