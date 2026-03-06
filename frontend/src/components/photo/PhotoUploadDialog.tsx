@@ -47,6 +47,8 @@ export function PhotoUploadDialog({
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
   const [subjectScale, setSubjectScale] = useState(1);
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -61,6 +63,8 @@ export function PhotoUploadDialog({
     setIsUploading(false);
     setError('');
     setSubjectScale(1);
+    setBrightness(100);
+    setContrast(100);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [initialImageSrc, initialAge, initialIsDefault, sourceMediaId]);
 
@@ -167,7 +171,19 @@ export function PhotoUploadDialog({
         canvas.height,
       );
     }
-  }, [completedCrop, subjectScale]);
+
+    if (brightness !== 100 || contrast !== 100) {
+      const tmp = document.createElement('canvas');
+      tmp.width = canvas.width;
+      tmp.height = canvas.height;
+      const tmpCtx = tmp.getContext('2d')!;
+      tmpCtx.drawImage(canvas, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.filter = `brightness(${brightness / 100}) contrast(${contrast / 100})`;
+      ctx.drawImage(tmp, 0, 0);
+      ctx.filter = 'none';
+    }
+  }, [completedCrop, subjectScale, brightness, contrast]);
 
   /* ---- submit ---- */
 
@@ -192,7 +208,7 @@ export function PhotoUploadDialog({
         y: completedCrop.y * scaleY,
         width: completedCrop.width * scaleX,
         height: completedCrop.height * scaleY,
-      }, undefined, undefined, undefined, subjectScale);
+      }, undefined, undefined, undefined, subjectScale, brightness / 100, contrast / 100);
       await onUpload({
         blob,
         age: ageNum,
@@ -211,6 +227,8 @@ export function PhotoUploadDialog({
     onUpload,
     sourceMediaId,
     subjectScale,
+    brightness,
+    contrast,
   ]);
 
   /* ---- render ---- */
@@ -375,12 +393,46 @@ export function PhotoUploadDialog({
                       </p>
                     </div>
 
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Brightness
+                      </label>
+                      <input
+                        type="range"
+                        min={50}
+                        max={150}
+                        step={1}
+                        value={brightness}
+                        onChange={(e) => setBrightness(Number(e.target.value))}
+                        className="w-full accent-emerald-600"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">{brightness}%</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Contrast
+                      </label>
+                      <input
+                        type="range"
+                        min={50}
+                        max={150}
+                        step={1}
+                        value={contrast}
+                        onChange={(e) => setContrast(Number(e.target.value))}
+                        className="w-full accent-emerald-600"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">{contrast}%</p>
+                    </div>
+
                     <button
                       onClick={() => {
                         setImageSrc(null);
                         setCrop(undefined);
                         setCompletedCrop(undefined);
                         setSubjectScale(1);
+                        setBrightness(100);
+                        setContrast(100);
                         if (fileInputRef.current)
                           fileInputRef.current.value = '';
                       }}

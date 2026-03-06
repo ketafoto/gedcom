@@ -25,6 +25,8 @@ export async function getCroppedBlob(
   maxHeight = MAX_HEIGHT,
   quality = JPEG_QUALITY,
   subjectScale = 1,
+  brightness = 1,
+  contrast = 1,
 ): Promise<Blob> {
   const image = await createImage(imageSrc);
 
@@ -98,6 +100,18 @@ export async function getCroppedBlob(
       outW,
       outH,
     );
+  }
+
+  if (brightness !== 1 || contrast !== 1) {
+    const tmp = document.createElement('canvas');
+    tmp.width = canvas.width;
+    tmp.height = canvas.height;
+    const tmpCtx = tmp.getContext('2d')!;
+    tmpCtx.drawImage(canvas, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.filter = `brightness(${brightness}) contrast(${contrast})`;
+    ctx.drawImage(tmp, 0, 0);
+    ctx.filter = 'none';
   }
 
   return new Promise<Blob>((resolve, reject) => {
