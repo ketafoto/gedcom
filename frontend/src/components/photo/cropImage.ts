@@ -12,6 +12,25 @@ const MIN_SUBJECT_SCALE = 0.6;
 const MAX_SUBJECT_SCALE = 1;
 
 /**
+ * Scale factor needed so a rotated W×H rectangle fully covers the original
+ * W×H frame (no empty corners).
+ */
+export function rotationCoverScale(
+  w: number,
+  h: number,
+  degrees: number,
+): number {
+  if (degrees === 0) return 1;
+  const rad = (Math.abs(degrees) * Math.PI) / 180;
+  const cosA = Math.cos(rad);
+  const sinA = Math.sin(rad);
+  return Math.max(
+    (w * cosA + h * sinA) / w,
+    (w * sinA + h * cosA) / h,
+  );
+}
+
+/**
  * Crop, downscale, and compress the selected region into a JPEG Blob.
  *
  * The output is capped at 600×750 px (4:5 portrait ratio at 2× retina) and
@@ -27,6 +46,7 @@ export async function getCroppedBlob(
   subjectScale = 1,
   brightness = 1,
   contrast = 1,
+  rotation = 0,
 ): Promise<Blob> {
   const image = await createImage(imageSrc);
 
@@ -102,6 +122,23 @@ export async function getCroppedBlob(
     );
   }
 
+  if (rotation !== 0) {
+    const tmp = document.createElement('canvas');
+    tmp.width = canvas.width;
+    tmp.height = canvas.height;
+    const tmpCtx = tmp.getContext('2d')!;
+    tmpCtx.drawImage(canvas, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const rad = (rotation * Math.PI) / 180;
+    const cs = rotationCoverScale(canvas.width, canvas.height, rotation);
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(rad);
+    ctx.scale(cs, cs);
+    ctx.drawImage(tmp, -canvas.width / 2, -canvas.height / 2);
+    ctx.restore();
+  }
+
   if (brightness !== 1 || contrast !== 1) {
     const tmp = document.createElement('canvas');
     tmp.width = canvas.width;
@@ -126,7 +163,12 @@ export async function getCroppedBlob(
 function createImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
+    // Only set crossOrigin for cross-origin URLs (not blob: or same-origin).
+    // Setting it on blob: URLs in Electron/Chromium can silently break canvas
+    // drawing, producing an all-black export.
+    if (/^https?:\/\//.test(url) && !url.startsWith(window.location.origin)) {
+      img.crossOrigin = 'anonymous';
+    }
     img.onload = () => resolve(img);
     img.onerror = (e) => reject(e);
     img.src = url;

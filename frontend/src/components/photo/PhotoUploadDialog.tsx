@@ -9,7 +9,7 @@ import ReactCrop, {
 import 'react-image-crop/dist/ReactCrop.css';
 import { X, Camera } from 'lucide-react';
 import { Button } from '../common/Button';
-import { getCroppedBlob } from './cropImage';
+import { getCroppedBlob, rotationCoverScale } from './cropImage';
 
 const ACCEPTED_FORMATS = '.jpg,.jpeg,.png,.webp,.heic,.heif';
 const PORTRAIT_ASPECT = 4 / 5;
@@ -49,6 +49,7 @@ export function PhotoUploadDialog({
   const [subjectScale, setSubjectScale] = useState(1);
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
+  const [rotation, setRotation] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -65,6 +66,7 @@ export function PhotoUploadDialog({
     setSubjectScale(1);
     setBrightness(100);
     setContrast(100);
+    setRotation(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [initialImageSrc, initialAge, initialIsDefault, sourceMediaId]);
 
@@ -172,6 +174,23 @@ export function PhotoUploadDialog({
       );
     }
 
+    if (rotation !== 0) {
+      const tmp = document.createElement('canvas');
+      tmp.width = canvas.width;
+      tmp.height = canvas.height;
+      const tmpCtx = tmp.getContext('2d')!;
+      tmpCtx.drawImage(canvas, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const rad = (rotation * Math.PI) / 180;
+      const cs = rotationCoverScale(canvas.width, canvas.height, rotation);
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rad);
+      ctx.scale(cs, cs);
+      ctx.drawImage(tmp, -canvas.width / 2, -canvas.height / 2);
+      ctx.restore();
+    }
+
     if (brightness !== 100 || contrast !== 100) {
       const tmp = document.createElement('canvas');
       tmp.width = canvas.width;
@@ -183,7 +202,7 @@ export function PhotoUploadDialog({
       ctx.drawImage(tmp, 0, 0);
       ctx.filter = 'none';
     }
-  }, [completedCrop, subjectScale, brightness, contrast]);
+  }, [completedCrop, subjectScale, rotation, brightness, contrast]);
 
   /* ---- submit ---- */
 
@@ -208,7 +227,7 @@ export function PhotoUploadDialog({
         y: completedCrop.y * scaleY,
         width: completedCrop.width * scaleX,
         height: completedCrop.height * scaleY,
-      }, undefined, undefined, undefined, subjectScale, brightness / 100, contrast / 100);
+      }, undefined, undefined, undefined, subjectScale, brightness / 100, contrast / 100, rotation);
       await onUpload({
         blob,
         age: ageNum,
@@ -227,6 +246,7 @@ export function PhotoUploadDialog({
     onUpload,
     sourceMediaId,
     subjectScale,
+    rotation,
     brightness,
     contrast,
   ]);
@@ -395,6 +415,22 @@ export function PhotoUploadDialog({
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Straighten
+                      </label>
+                      <input
+                        type="range"
+                        min={-30}
+                        max={30}
+                        step={1}
+                        value={rotation}
+                        onChange={(e) => setRotation(Number(e.target.value))}
+                        className="w-full accent-emerald-600"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">{rotation}°</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Brightness
                       </label>
                       <input
@@ -431,6 +467,7 @@ export function PhotoUploadDialog({
                         setCrop(undefined);
                         setCompletedCrop(undefined);
                         setSubjectScale(1);
+                        setRotation(0);
                         setBrightness(100);
                         setContrast(100);
                         if (fileInputRef.current)
