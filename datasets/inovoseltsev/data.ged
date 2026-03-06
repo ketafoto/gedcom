@@ -86,7 +86,6 @@
 1 OBJE
 2 FILE I00006_9.jpg
 2 FORM photo
-1 NOTE Mihail (Michael), father of Igor Novoseltsev
 0 @I00007@ INDI
 1 NAME Ludmila /Kriulina/
 2 TYPE maiden
@@ -123,7 +122,6 @@
 1 OBJE
 2 FILE I00007_72.jpg
 2 FORM photo
-1 NOTE Ludmila Kriulina, mother of Igor Novoseltsev
 0 @I00008@ INDI
 1 NAME Marina /Novoseltsev/
 2 TYPE maiden
@@ -136,12 +134,10 @@
 1 FAMC @F00002@
 1 FAMS @F00003@
 1 OCCU Super Nanny
-1 NOTE Sister of Igor Novoseltsev
 0 @I00009@ INDI
 1 NAME Vladimir /Obedin/
 1 SEX M
 1 FAMS @F00003@
-1 NOTE Husband of Marina Obedina
 0 @I00010@ INDI
 1 NAME Viacheslav /Obedin/
 1 SEX M
@@ -151,12 +147,10 @@
 1 FAMC @F00003@
 1 FAMS @F00005@
 1 OCCU Tech Support, Microsoft
-1 NOTE Son of Marina Obedina and Vladimir Obedin
 0 @I00011@ INDI
 1 NAME Yulya /Obedina/
 1 SEX F
 1 FAMC @F00003@
-1 NOTE Daughter of Marina Obedina and Vladimir Obedin
 0 @I00012@ INDI
 1 NAME Valeria /Obedina/
 2 TYPE maiden
@@ -169,17 +163,14 @@
 1 FAMC @F00003@
 1 FAMS @F00004@
 1 OCCU Back Office Worker (Wedding Organization)
-1 NOTE Daughter of Marina Obedina and Vladimir Obedin
 0 @I00013@ INDI
 1 NAME Baruch /Yakobov/
 1 SEX M
 1 FAMS @F00004@
-1 NOTE Husband of Valeria Obedin
 0 @I00014@ INDI
 1 NAME Omer /Bar/
 1 SEX M
 1 FAMS @F00005@
-1 NOTE Husband of Viacheslav Obedin (same-sex marriage)
 0 @I00015@ INDI
 1 NAME Mariya /Kliger/
 2 TYPE maiden
@@ -194,17 +185,14 @@
 1 OCCU Nurse
 1 DEAT
 2 DATE ABT 1980
-1 NOTE Mother of Ludmila Kriulina
 0 @I00017@ INDI
 1 NAME Efim /Kliger/
 2 TYPE birth name
 1 NAME Efim /Fima/
 1 SEX M
-1 NOTE Uncle of Ludmila Kriulina
 0 @I00018@ INDI
 1 NAME Aleksandra /X/
 1 SEX F
-1 NOTE Aunt Shura, sister of Mariya Kriulina
 0 @I00019@ INDI
 1 NAME Galina /Kriulin/
 1 SEX F
@@ -212,7 +200,6 @@
 2 DATE 19 MAR 1952
 2 PLAC Drogobych, Lvov District, Ukraine, USSR
 1 FAMC @F00021@
-1 NOTE Sister of Ludmila Kriulina
 0 @I00020@ INDI
 1 NAME Grigorij /Kriulin/
 1 SEX M
@@ -220,24 +207,21 @@
 2 DATE 19 MAR 1952
 2 PLAC Drogobych, Lvov District, Ukraine, USSR
 1 FAMC @F00021@
-1 NOTE Brother of Ludmila Kriulina
 0 @I00021@ INDI
 1 NAME Ivan /Novoseltsev/
 1 SEX M
 1 FAMS @F00020@
-1 NOTE Father of Mihail Novoseltsev
 0 @I00022@ INDI
 1 NAME Nina /Kacher/
 1 SEX F
 1 BIRT
 2 DATE ABT 1920
 1 FAMS @F00020@
-1 NOTE Mother of Mihail Novoseltsev
 0 @I00023@ INDI
 1 NAME Kas'yan /Kriulin/
 1 SEX M
 1 FAMS @F00021@
-1 NOTE Father of Ludmila Kriulina, wounded in WWII, reunited with wife Mariya in hospital
+1 NOTE Wounded in WWII, reunited with wife Mariya in hospital
 0 @F00001@ FAM
 1 HUSB @I00001@
 1 WIFE @I00002@
