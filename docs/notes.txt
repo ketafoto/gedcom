@@ -164,7 +164,7 @@ Backend (UviCorn + FastAPI + SqlAlchemy):
     1. .\venv-win\Scripts\Activate.ps1
     2. uvicorn backend.main:app --host 0.0.0.0 --port 8000
        OR
-       uvicorn backend.main:app --reload
+       uvicorn backend.main:app --reload --reload-dir .
     3. http://localhost:8000 in Browser
 
 Frontend (Vite + React + TailWind):
@@ -175,8 +175,3 @@ Frontend (Vite + React + TailWind):
 2.
 Use separate databases for different datasets:
 change DEFAULT_OWNER_ID in backend/api/auth.py
-
-
-
-
-On ImprtPhotodialog move all controls - age, OK/Cancle to be on right side near the photo frame - where the Tree Preview is located!

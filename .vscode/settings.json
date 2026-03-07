@@ -51,6 +51,7 @@
     "python.testing.autoTestDiscoverOnSaveEnabled": true,
 
     "workbench.colorTheme": "Best Themes - Darcula",
+
     "cursorpyright.analysis.extraPaths": [
         "./venv/lib/python3.*/site-packages"
     ],

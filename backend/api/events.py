@@ -22,6 +22,7 @@ def create_event(
         family_id=event.family_id,
         event_type_code=event.event_type_code,
         event_date=event.event_date,
+        event_date_approx=event.event_date_approx,
         event_place=event.event_place,
         description=event.description,
     )

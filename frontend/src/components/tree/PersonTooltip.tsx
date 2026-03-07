@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom';
+import { sortEventsChronologically } from '../../utils/eventSort';
 import type { TreeNode, TreeNodeName } from '../../types/models';
 
 interface PersonTooltipProps {
@@ -121,7 +122,7 @@ export function PersonTooltip({ data, position }: PersonTooltipProps) {
         {/* Events */}
         {hasEvents && (
           <div className={(hasBirth || hasDeath) ? "mt-2 pt-2 border-t border-gray-100 space-y-1.5" : "space-y-1.5"}>
-            {data.events.map((event, idx) => {
+            {sortEventsChronologically(data.events).map((event, idx) => {
               const date = formatDate(event.event_date, event.event_date_approx);
               return (
                 <div key={idx} className="flex gap-2 text-xs">

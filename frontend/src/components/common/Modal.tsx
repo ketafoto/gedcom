@@ -7,10 +7,18 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   wide?: boolean;
+  /** Use higher z-index so this modal appears above other modals (e.g. dialog opened from within a modal) */
+  elevated?: boolean;
 }
 
-export function Modal({ open, onClose, title, children, wide }: ModalProps) {
+/** Time window (ms) during which we don't close on overlay click after select focus/blur.
+ *  Prevents closing when user picks a native <select> option (dropdown renders outside modal). */
+const SELECT_GUARD_MS = 400;
+
+export function Modal({ open, onClose, title, children, wide, elevated }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const lastSelectInteractionTime = useRef(0);
+  const ignoreNextOverlayClick = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -27,16 +35,42 @@ export function Modal({ open, onClose, title, children, wide }: ModalProps) {
 
   if (!open) return null;
 
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target !== overlayRef.current) return;
+    if (ignoreNextOverlayClick.current) {
+      ignoreNextOverlayClick.current = false;
+      return;
+    }
+    if (Date.now() - lastSelectInteractionTime.current < SELECT_GUARD_MS) return;
+    onClose();
+  };
+
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 overflow-y-auto py-8"
-      onClick={(e) => {
-        if (e.target === overlayRef.current) onClose();
+      className={`fixed inset-0 flex items-start justify-center bg-black/40 overflow-y-auto py-8 ${elevated ? 'z-[100]' : 'z-50'}`}
+      onClick={handleOverlayClick}
+      onMouseDown={(e) => {
+        if (e.target !== overlayRef.current) return;
+        const active = document.activeElement as HTMLElement | null;
+        if (active?.tagName === 'SELECT') {
+          ignoreNextOverlayClick.current = true;
+        }
       }}
     >
       <div
         className={`bg-white rounded-xl shadow-xl w-full mx-4 ${wide ? 'max-w-4xl' : 'max-w-2xl'}`}
+        onFocusCapture={(e) => {
+          if ((e.target as HTMLElement).tagName === 'SELECT') {
+            lastSelectInteractionTime.current = Date.now();
+          }
+        }}
+        onBlurCapture={(e) => {
+          if ((e.target as HTMLElement).tagName === 'SELECT') {
+            lastSelectInteractionTime.current = Date.now();
+            ignoreNextOverlayClick.current = true;
+          }
+        }}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">{title}</h2>

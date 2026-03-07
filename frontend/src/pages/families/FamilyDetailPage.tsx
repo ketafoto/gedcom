@@ -1,25 +1,37 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
-  Edit2,
   Trash2,
   Calendar,
   MapPin,
   Heart,
   User,
   Image,
-  Plus,
 } from 'lucide-react';
 import { familiesApi } from '../../api/families';
 import { individualsApi } from '../../api/individuals';
 import { formatIndividualName, getLatestName } from '../../utils/nameUtils';
+import { sortEventsChronologically } from '../../utils/eventSort';
 import { eventsApi } from '../../api/events';
+import { typesApi } from '../../api/types';
 import { mediaApi } from '../../api/media';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
+import { EventFormDialog } from '../../components/events/EventFormDialog';
+import { ModalEventsSection } from '../../components/individuals/ModalEventsSection';
+import { ModalMarriage } from '../../components/families/ModalMarriage';
+import { ModalDivorce } from '../../components/families/ModalDivorce';
+import { ModalFamilyNotes } from '../../components/families/ModalFamilyNotes';
+import { ModalSpouses } from '../../components/families/ModalSpouses';
+import { ModalChildren } from '../../components/families/ModalChildren';
+import { ModalFamilyMedia } from '../../components/families/ModalFamilyMedia';
 import toast from 'react-hot-toast';
+import type { Event } from '../../types/models';
+
+type FamilySectionModal = 'spouses' | 'children' | 'marriage' | 'divorce' | 'events' | 'notes' | 'media' | null;
 
 export function FamilyDetailPage() {
   const { id } = useParams();
@@ -42,6 +54,13 @@ export function FamilyDetailPage() {
     queryFn: () => eventsApi.list({ family_id: Number(id) }),
     enabled: !!id,
   });
+
+  const { data: eventTypes } = useQuery({
+    queryKey: ['types', 'events'],
+    queryFn: typesApi.getEventTypes,
+  });
+  const eventTypeLabel = (code: string) =>
+    eventTypes?.find((t) => t.code === code)?.description ?? code;
 
   const { data: media } = useQuery({
     queryKey: ['media', { family_id: Number(id) }],
@@ -67,6 +86,18 @@ export function FamilyDetailPage() {
     }
   };
 
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
+
+  const deleteEventMutation = useMutation({
+    mutationFn: eventsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events', { family_id: Number(id) }] });
+      toast.success('Event deleted');
+    },
+    onError: () => toast.error('Failed to delete event'),
+  });
+
   // Helper to get individual by ID
   const getIndividual = (individualId: number) => {
     return individuals?.find((i) => i.id === individualId);
@@ -78,7 +109,8 @@ export function FamilyDetailPage() {
     return formatIndividualName(getLatestName(individual.names));
   };
 
-  const handleEdit = () => navigate(`/families/${id}/edit`);
+  const [sectionModal, setSectionModal] = useState<FamilySectionModal>(null);
+  const cardDoubleClick = (section: FamilySectionModal) => ({ onDoubleClick: () => setSectionModal(section) });
 
   if (isLoading) {
     return (
@@ -123,12 +155,6 @@ export function FamilyDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link to={`/families/${id}/edit`}>
-            <Button variant="secondary">
-              <Edit2 className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
-          </Link>
           <Button variant="danger" onClick={handleDelete}>
             <Trash2 className="w-4 h-4 mr-2" />
             Delete
@@ -140,7 +166,7 @@ export function FamilyDetailPage() {
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Spouses */}
-          <Card title="Spouses / Partners" onDoubleClick={handleEdit}>
+          <Card title="Spouses / Partners" {...cardDoubleClick('spouses')}>
             {family.members.length === 0 ? (
               <p className="text-gray-500 text-center py-4">No members added</p>
             ) : (
@@ -173,16 +199,7 @@ export function FamilyDetailPage() {
           </Card>
 
           {/* Children */}
-          <Card
-            title="Children"
-            onDoubleClick={handleEdit}
-            actions={
-              <Button variant="ghost" size="sm">
-                <Plus className="w-4 h-4 mr-1" />
-                Add Child
-              </Button>
-            }
-          >
+          <Card title="Children" {...cardDoubleClick('children')}>
             {family.children.length === 0 ? (
               <div className="text-center py-6 text-gray-500">
                 <User className="w-12 h-12 mx-auto mb-2 text-gray-300" />
@@ -216,72 +233,61 @@ export function FamilyDetailPage() {
             )}
           </Card>
 
-          {/* Marriage Info */}
-          {(family.marriage_date || family.marriage_date_approx || family.marriage_place) && (
-            <Card title="Marriage" onDoubleClick={handleEdit}>
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-rose-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">
-                    {family.marriage_date || family.marriage_date_approx || 'Date unknown'}
-                  </p>
-                  {family.marriage_place && (
-                    <p className="text-gray-600 flex items-center gap-1 mt-1">
-                      <MapPin className="w-4 h-4" />
-                      {family.marriage_place}
-                    </p>
-                  )}
-                </div>
+          {/* Marriage */}
+          <Card title="Marriage" {...cardDoubleClick('marriage')}>
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-rose-600" />
               </div>
-            </Card>
-          )}
+              <div>
+                <p className="font-medium text-gray-900">
+                  {family.marriage_date || family.marriage_date_approx || 'No date recorded'}
+                </p>
+                {family.marriage_place ? (
+                  <p className="text-gray-600 flex items-center gap-1 mt-1">
+                    <MapPin className="w-4 h-4" />
+                    {family.marriage_place}
+                  </p>
+                ) : (
+                  <p className="text-gray-500 text-sm mt-1">No place recorded</p>
+                )}
+              </div>
+            </div>
+          </Card>
 
-          {/* Divorce Info */}
-          {(family.divorce_date || family.divorce_date_approx) && (
-            <Card title="Divorce" onDoubleClick={handleEdit}>
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-gray-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">
-                    {family.divorce_date || family.divorce_date_approx}
-                  </p>
-                </div>
+          {/* Divorce */}
+          <Card title="Divorce" {...cardDoubleClick('divorce')}>
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-gray-600" />
               </div>
-            </Card>
-          )}
+              <div>
+                <p className="font-medium text-gray-900">
+                  {family.divorce_date || family.divorce_date_approx || 'No date recorded'}
+                </p>
+              </div>
+            </div>
+          </Card>
 
           {/* Events */}
-          <Card
-            title="Family Events"
-            onDoubleClick={handleEdit}
-            actions={
-              <Button variant="ghost" size="sm">
-                <Plus className="w-4 h-4 mr-1" />
-                Add Event
-              </Button>
-            }
-          >
+          <Card title="Family Events" {...cardDoubleClick('events')}>
             {(events?.length || 0) === 0 ? (
               <p className="text-gray-500 text-center py-4">No events recorded</p>
             ) : (
               <div className="divide-y divide-gray-100">
-                {events?.map((event) => (
-                  <div key={event.id} className="py-3 flex items-start gap-4">
+                {sortEventsChronologically(events ?? []).map((ev) => (
+                  <div key={ev.id} className="py-3 flex items-start gap-4">
                     <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Calendar className="w-4 h-4 text-blue-600" />
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{event.event_type_code}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900">{eventTypeLabel(ev.event_type_code)}</p>
                       <p className="text-sm text-gray-600">
-                        {event.event_date || event.event_date_approx}
-                        {event.event_place && ` • ${event.event_place}`}
+                        {ev.event_date || ev.event_date_approx}
+                        {ev.event_place && ` • ${ev.event_place}`}
                       </p>
-                      {event.description && (
-                        <p className="text-sm text-gray-500 mt-1">{event.description}</p>
+                      {ev.description && (
+                        <p className="text-sm text-gray-500 mt-1">{ev.description}</p>
                       )}
                     </div>
                   </div>
@@ -291,25 +297,19 @@ export function FamilyDetailPage() {
           </Card>
 
           {/* Notes */}
-          {family.notes && (
-            <Card title="Notes" onDoubleClick={handleEdit}>
+          <Card title="Notes" {...cardDoubleClick('notes')}>
+            {family.notes ? (
               <p className="text-gray-700 whitespace-pre-wrap">{family.notes}</p>
-            </Card>
-          )}
+            ) : (
+              <p className="text-gray-500 text-sm">No notes recorded</p>
+            )}
+          </Card>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Media */}
-          <Card
-            title="Media"
-            onDoubleClick={handleEdit}
-            actions={
-              <Button variant="ghost" size="sm">
-                <Plus className="w-4 h-4" />
-              </Button>
-            }
-          >
+          <Card title="Media" {...cardDoubleClick('media')}>
             {(media?.length || 0) === 0 ? (
               <div className="text-center py-4">
                 <Image className="w-12 h-12 mx-auto text-gray-300 mb-2" />
@@ -330,6 +330,46 @@ export function FamilyDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* Section modals */}
+      {family && (
+        <>
+          <ModalSpouses open={sectionModal === 'spouses'} onClose={() => setSectionModal(null)} family={family} />
+          <ModalChildren open={sectionModal === 'children'} onClose={() => setSectionModal(null)} family={family} />
+          <ModalMarriage open={sectionModal === 'marriage'} onClose={() => setSectionModal(null)} family={family} />
+          <ModalDivorce open={sectionModal === 'divorce'} onClose={() => setSectionModal(null)} family={family} />
+          <ModalFamilyNotes open={sectionModal === 'notes'} onClose={() => setSectionModal(null)} family={family} />
+          <ModalEventsSection
+            open={sectionModal === 'events'}
+            onClose={() => setSectionModal(null)}
+            events={events ?? []}
+            onAddEvent={() => {
+              setEventToEdit(null);
+              setEventDialogOpen(true);
+            }}
+            onEditEvent={(ev) => {
+              setEventToEdit(ev);
+              setEventDialogOpen(true);
+            }}
+            onDeleteEvent={(ev) => deleteEventMutation.mutate(ev.id)}
+          />
+          <ModalFamilyMedia
+            open={sectionModal === 'media'}
+            onClose={() => setSectionModal(null)}
+            media={media ?? []}
+          />
+        </>
+      )}
+
+      <EventFormDialog
+        open={eventDialogOpen}
+        onClose={() => {
+          setEventDialogOpen(false);
+          setEventToEdit(null);
+        }}
+        familyId={id ? Number(id) : undefined}
+        event={eventToEdit}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Info } from 'lucide-react';
+import { useMemo, useState, useRef, useEffect } from 'react';
+import { Info, ChevronDown } from 'lucide-react';
 import type { LookupType } from '../../types/models';
 
 type ParsedApprox = {
@@ -29,9 +29,11 @@ const parseApproxDate = (value: string | undefined, prefixes: string[]): ParsedA
 
   const prefixPattern = prefixes.join('|');
   if (prefixPattern) {
-    const prefixMatch = trimmed.match(new RegExp(`^(${prefixPattern})\\s+(.+)$`, 'i'));
+    const prefixMatch = trimmed.match(new RegExp(`^(${prefixPattern})(?:\\s+(.*))?$`, 'i'));
     if (prefixMatch) {
-      return { prefix: prefixMatch[1].toUpperCase(), input: prefixMatch[2] };
+      const prefix = prefixMatch[1].toUpperCase();
+      const inputPart = (prefixMatch[2] ?? '').trim();
+      return { prefix, input: inputPart };
     }
   }
 
@@ -41,7 +43,7 @@ const parseApproxDate = (value: string | undefined, prefixes: string[]): ParsedA
 const buildApproxDate = (prefix: string, input: string): string => {
   const cleaned = input.trim();
   if (!prefix) return cleaned;
-  if (!cleaned) return '';
+  if (!cleaned) return prefix ? `${prefix} ` : '';
 
   if (prefix === 'BET' || prefix === 'FROM') {
     const parts = cleaned.split(/\s+/);
@@ -102,10 +104,33 @@ export const ApproxDateInput = ({
     () => resolvedOptions.map((opt) => opt.code.toUpperCase()),
     [resolvedOptions]
   );
-  const parsed = useMemo(
-    () => parseApproxDate(value, prefixes),
-    [value, prefixes]
-  );
+  const parsed = useMemo(() => {
+    const p = parseApproxDate(value, prefixes);
+    if (p.prefix && resolvedOptions.length > 0) {
+      const match = resolvedOptions.find(
+        (opt) => opt.code.toUpperCase() === p.prefix.toUpperCase()
+      );
+      if (match) return { ...p, prefix: match.code };
+    }
+    return p;
+  }, [value, prefixes, resolvedOptions]);
+
+  const [prefixOpen, setPrefixOpen] = useState(false);
+  const prefixRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!prefixOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (prefixRef.current && !prefixRef.current.contains(e.target as Node)) {
+        setPrefixOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [prefixOpen]);
+
+  const selectedOpt = resolvedOptions.find((o) => o.code === parsed.prefix);
+  const displayLabel = selectedOpt ? `${selectedOpt.code} (${selectedOpt.description})` : (parsed.prefix || '-');
 
   return (
     <div className="space-y-1">
@@ -117,18 +142,43 @@ export const ApproxDateInput = ({
         </div>
       </div>
       <div className="flex gap-2 min-w-0">
-        <select
-          value={parsed.prefix}
-          onChange={(e) => onChange(buildApproxDate(e.target.value, parsed.input))}
-          className="w-36 shrink-0 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white"
-        >
-          <option value="">-</option>
-          {resolvedOptions.map((opt) => (
-            <option key={opt.code} value={opt.code}>
-              {opt.code} ({opt.description})
-            </option>
-          ))}
-        </select>
+        <div className="relative w-36 shrink-0" ref={prefixRef}>
+          <button
+            type="button"
+            onClick={() => setPrefixOpen((o) => !o)}
+            className="w-full flex items-center justify-between gap-1 px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 hover:bg-gray-50"
+          >
+            <span className="truncate">{displayLabel}</span>
+            <ChevronDown className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${prefixOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {prefixOpen && (
+            <div className="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white py-1 shadow-lg max-h-56 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(buildApproxDate('', parsed.input));
+                  setPrefixOpen(false);
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+              >
+                -
+              </button>
+              {resolvedOptions.map((opt) => (
+                <button
+                  key={opt.code}
+                  type="button"
+                  onClick={() => {
+                    onChange(buildApproxDate(opt.code, parsed.input));
+                    setPrefixOpen(false);
+                  }}
+                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 ${parsed.prefix === opt.code ? 'bg-emerald-50 text-emerald-800' : ''}`}
+                >
+                  {opt.code} ({opt.description})
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <input
           type="text"
           value={parsed.input}

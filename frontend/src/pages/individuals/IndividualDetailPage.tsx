@@ -3,28 +3,38 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
-  Edit2,
   Trash2,
   Calendar,
   MapPin,
   Heart,
   Image,
-  Plus,
   GitBranch,
   Star,
-  Camera,
 } from 'lucide-react';
 import { individualsApi } from '../../api/individuals';
 import { familiesApi } from '../../api/families';
 import { eventsApi } from '../../api/events';
+import { typesApi } from '../../api/types';
 import { mediaApi } from '../../api/media';
 import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
 import { PhotoUploadDialog } from '../../components/photo/PhotoUploadDialog';
+import { EventFormDialog } from '../../components/events/EventFormDialog';
+import { ModalBasicInfo } from '../../components/individuals/ModalBasicInfo';
+import { ModalNames } from '../../components/individuals/ModalNames';
+import { ModalBirth } from '../../components/individuals/ModalBirth';
+import { ModalDeath } from '../../components/individuals/ModalDeath';
+import { ModalNotes } from '../../components/individuals/ModalNotes';
+import { ModalEventsSection } from '../../components/individuals/ModalEventsSection';
+import { ModalPhotosSection } from '../../components/individuals/ModalPhotosSection';
+import { ModalFamiliesSection } from '../../components/individuals/ModalFamiliesSection';
 import toast from 'react-hot-toast';
 import { formatIndividualName, getLatestName } from '../../utils/nameUtils';
-import type { Media } from '../../types/models';
+import { sortEventsChronologically } from '../../utils/eventSort';
+import type { Event, Media } from '../../types/models';
+
+type SectionModal = 'basic' | 'names' | 'birth' | 'death' | 'notes' | 'events' | 'photos' | 'families' | null;
 
 interface IndividualDetailPageProps {
   readOnly?: boolean;
@@ -52,6 +62,13 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
     enabled: !!id,
   });
 
+  const { data: eventTypes } = useQuery({
+    queryKey: ['types', 'events'],
+    queryFn: typesApi.getEventTypes,
+  });
+  const eventTypeLabel = (code: string) =>
+    eventTypes?.find((t) => t.code === code)?.description ?? code;
+
   const { data: media } = useQuery({
     queryKey: ['media', { individual_id: Number(id) }],
     queryFn: () => mediaApi.list({ individual_id: Number(id) }),
@@ -63,6 +80,10 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
   const [newPhotoSrc, setNewPhotoSrc] = useState<string | null>(null);
   const [photoCacheBust, setPhotoCacheBust] = useState(() => Date.now());
   const addPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
+  const [sectionModal, setSectionModal] = useState<SectionModal>(null);
 
   useEffect(() => {
     return () => {
@@ -109,6 +130,15 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
       toast.success('Photo deleted');
     },
     onError: () => toast.error('Failed to delete photo'),
+  });
+
+  const deleteEventMutation = useMutation({
+    mutationFn: eventsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['events', { individual_id: Number(id) }] });
+      toast.success('Event deleted');
+    },
+    onError: () => toast.error('Failed to delete event'),
   });
 
   const setDefaultMutation = useMutation({
@@ -194,8 +224,7 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
   const primaryName = getLatestName(individual.names);
   const displayName = formatIndividualName(primaryName);
 
-  const handleEdit = () => navigate(`/individuals/${id}/edit`);
-  const cardEditProps = !readOnly ? { onDoubleClick: handleEdit } : {};
+  const cardDoubleClick = (section: SectionModal) => (!readOnly ? { onDoubleClick: () => setSectionModal(section) } : {});
 
   // Find families where this individual is a member
   const relatedFamilies = (families || []).filter((family) =>
@@ -235,18 +264,10 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
             </Button>
           </Link>
           {!readOnly && (
-            <>
-              <Link to={`/individuals/${id}/edit`}>
-                <Button variant="secondary">
-                  <Edit2 className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-              </Link>
-              <Button variant="danger" onClick={handleDelete}>
+            <Button variant="danger" onClick={handleDelete}>
                 <Trash2 className="w-4 h-4 mr-2" />
                 Delete
               </Button>
-            </>
           )}
         </div>
       </div>
@@ -255,7 +276,7 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Basic Info */}
-          <Card title="Basic Information" {...cardEditProps}>
+          <Card title="Basic Information" {...cardDoubleClick('basic')}>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <dt className="text-sm font-medium text-gray-500">Sex</dt>
@@ -268,76 +289,69 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
             </dl>
           </Card>
 
-          {/* Birth */}
-          <Card title="Birth" {...cardEditProps}>
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">
-                  {individual.birth_date || individual.birth_date_approx || 'Unknown'}
-                </p>
-                {individual.birth_place && (
-                  <p className="text-gray-600 flex items-center gap-1 mt-1">
-                    <MapPin className="w-4 h-4" />
-                    {individual.birth_place}
+          {/* Birth & Death on same row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <Card title="Birth" {...cardDoubleClick('birth')}>
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {individual.birth_date || individual.birth_date_approx || 'No date recorded'}
                   </p>
-                )}
+                  {individual.birth_place ? (
+                    <p className="text-gray-600 flex items-center gap-1 mt-1">
+                      <MapPin className="w-4 h-4" />
+                      {individual.birth_place}
+                    </p>
+                  ) : (
+                    <p className="text-gray-500 text-sm mt-1">No place recorded</p>
+                  )}
+                </div>
               </div>
-            </div>
-          </Card>
-
-          {/* Death */}
-          {(individual.death_date || individual.death_date_approx || individual.death_place) && (
-            <Card title="Death" {...cardEditProps}>
+            </Card>
+            <Card title="Death" {...cardDoubleClick('death')}>
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-gray-600" />
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">
-                    {individual.death_date || individual.death_date_approx || 'Unknown'}
+                    {individual.death_date || individual.death_date_approx || 'No date recorded'}
                   </p>
-                  {individual.death_place && (
+                  {individual.death_place ? (
                     <p className="text-gray-600 flex items-center gap-1 mt-1">
                       <MapPin className="w-4 h-4" />
                       {individual.death_place}
                     </p>
+                  ) : (
+                    <p className="text-gray-500 text-sm mt-1">No place recorded</p>
                   )}
                 </div>
               </div>
             </Card>
-          )}
+          </div>
 
           {/* Events */}
-          <Card
-            title="Events"
-            {...cardEditProps}
-            actions={!readOnly ? (
-              <Button variant="ghost" size="sm">
-                <Plus className="w-4 h-4 mr-1" />
-                Add Event
-              </Button>
-            ) : undefined}
-          >
+          <Card title="Events" {...cardDoubleClick('events')}>
             {(events?.length || 0) === 0 ? (
               <p className="text-gray-500 text-center py-4">No events recorded</p>
             ) : (
               <div className="divide-y divide-gray-100">
-                {events?.map((event) => (
-                  <div key={event.id} className="py-3 flex items-start gap-4">
+                {sortEventsChronologically(events ?? []).map((ev) => (
+                  <div key={ev.id} className="py-3 flex items-start gap-4">
                     <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Calendar className="w-4 h-4 text-blue-600" />
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{event.event_type_code}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900">{eventTypeLabel(ev.event_type_code)}</p>
                       <p className="text-sm text-gray-600">
-                        {event.event_date || event.event_date_approx}
-                        {event.event_place && ` • ${event.event_place}`}
+                        {ev.event_date || ev.event_date_approx}
+                        {ev.event_place && ` • ${ev.event_place}`}
                       </p>
-                      {event.description && (
-                        <p className="text-sm text-gray-500 mt-1">{event.description}</p>
+                      {ev.description && (
+                        <p className="text-sm text-gray-500 mt-1">{ev.description}</p>
                       )}
                     </div>
                   </div>
@@ -347,41 +361,37 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
           </Card>
 
           {/* Notes */}
-          {individual.notes && (
-            <Card title="Notes" {...cardEditProps}>
+          <Card title="Notes" {...cardDoubleClick('notes')}>
+            {individual.notes ? (
               <p className="text-gray-700 whitespace-pre-wrap">{individual.notes}</p>
-            </Card>
-          )}
+            ) : (
+              <p className="text-gray-500 text-sm">No notes recorded</p>
+            )}
+          </Card>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Alternative Names */}
-          {individual.names.length > 1 && (
-            <Card title="Alternative Names" {...cardEditProps}>
+          {/* Names */}
+          <Card title="Names" {...cardDoubleClick('names')}>
+            {individual.names.length === 0 ? (
+              <p className="text-gray-500 text-sm">No names recorded</p>
+            ) : (
               <ul className="space-y-2">
-                {individual.names.slice(1).map((name, index) => (
-                  <li key={index} className="text-gray-700">
-                    {`${name.prefix || ''} ${name.given_name || ''} ${name.family_name || ''} ${name.suffix || ''}`.trim()}
+                {individual.names.map((name, index) => (
+                  <li key={name.id ?? index} className="text-gray-700">
+                    {`${name.prefix || ''} ${name.given_name || ''} ${name.family_name || ''} ${name.suffix || ''}`.trim() || '—'}
                     {name.name_type && (
                       <span className="text-gray-500 text-sm ml-2">({name.name_type})</span>
                     )}
                   </li>
                 ))}
               </ul>
-            </Card>
-          )}
+            )}
+          </Card>
 
           {/* Families */}
-          <Card
-            title="Families"
-            {...cardEditProps}
-            actions={!readOnly ? (
-              <Button variant="ghost" size="sm">
-                <Plus className="w-4 h-4" />
-              </Button>
-            ) : undefined}
-          >
+          <Card title="Families" {...cardDoubleClick('families')}>
             {relatedFamilies.length === 0 ? (
               <p className="text-gray-500 text-center py-4">No family connections</p>
             ) : (
@@ -390,7 +400,6 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
                   const isChild = family.children.some((c) => c.child_id === Number(id));
                   const member = family.members.find((m) => m.individual_id === Number(id));
                   const role = isChild ? 'Child' : member?.role || 'Member';
-
                   return (
                     <li key={family.id}>
                       <Link
@@ -413,104 +422,36 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
           </Card>
 
           {/* Photos */}
-          <Card
-            title="Photos"
-            {...cardEditProps}
-            actions={!readOnly ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  handleStartAddPhoto();
-                }}
-              >
-                <Camera className="w-4 h-4 mr-1" />
-                Add Photo
-              </Button>
-            ) : undefined}
-          >
-            {(media?.length || 0) === 0 ? (
+          <Card title="Photos" {...cardDoubleClick('photos')}>
+            {sortedPhotoMedia.length === 0 ? (
               <div className="text-center py-4">
                 <Image className="w-12 h-12 mx-auto text-gray-300 mb-2" />
                 <p className="text-gray-500 text-sm">No photos yet</p>
-                {!readOnly && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => {
-                      handleStartAddPhoto();
-                    }}
-                  >
-                    <Camera className="w-4 h-4 mr-1" />
-                    Add first photo
-                  </Button>
-                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {sortedPhotoMedia.map((item) => (
-                    <div key={item.id} className="group relative">
-                      <div
-                        className={`w-full aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden ring-2 ${
-                          item.is_default ? 'ring-amber-400' : 'ring-transparent'
-                        }`}
-                      >
-                        <img
-                          src={`${mediaApi.getFileUrl(item.id)}?v=${photoCacheBust}`}
-                          alt={`Age ${item.age_on_photo ?? '?'}`}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </div>
-                      {/* Age label */}
-                      <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
-                        age {item.age_on_photo ?? '?'}
-                      </span>
-                      {item.is_default && (
-                        <Star className="absolute top-1 right-1 w-4 h-4 text-amber-400 fill-amber-400" />
-                      )}
-                      {/* Hover actions */}
-                      {!readOnly && (
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors
-                                        rounded-lg flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
-                          <button
-                            onClick={() => {
-                              setEditingPhoto(item);
-                              setNewPhotoSrc((prev) => {
-                                if (prev) URL.revokeObjectURL(prev);
-                                return null;
-                              });
-                              setShowPhotoDialog(true);
-                            }}
-                            className="p-1.5 bg-white/90 rounded-full hover:bg-white"
-                            title="Edit crop"
-                          >
-                            <Edit2 className="w-3.5 h-3.5 text-emerald-600" />
-                          </button>
-                          {!item.is_default && (
-                            <button
-                              onClick={() => setDefaultMutation.mutate(item.id)}
-                              className="p-1.5 bg-white/90 rounded-full hover:bg-white"
-                              title="Set as default"
-                            >
-                              <Star className="w-3.5 h-3.5 text-amber-500" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              if (window.confirm('Delete this photo?'))
-                                deleteMediaMutation.mutate(item.id);
-                            }}
-                            className="p-1.5 bg-white/90 rounded-full hover:bg-white"
-                            title="Delete photo"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                          </button>
-                        </div>
-                      )}
+                  <div key={item.id} className="relative">
+                    <div
+                      className={`w-full aspect-[4/5] bg-gray-100 rounded-lg overflow-hidden ring-2 ${
+                        item.is_default ? 'ring-amber-400' : 'ring-transparent'
+                      }`}
+                    >
+                      <img
+                        src={`${mediaApi.getFileUrl(item.id)}?v=${photoCacheBust}`}
+                        alt={`Age ${item.age_on_photo ?? '?'}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
                     </div>
-                  ))}
+                    <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
+                      age {item.age_on_photo ?? '?'}
+                    </span>
+                    {item.is_default && (
+                      <Star className="absolute top-1 right-1 w-4 h-4 text-amber-400 fill-amber-400" />
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </Card>
@@ -539,6 +480,94 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
             });
           }}
         />
+      )}
+
+      {/* Event add/edit dialog */}
+      {!readOnly && (
+        <EventFormDialog
+          open={eventDialogOpen}
+          onClose={() => {
+            setEventDialogOpen(false);
+            setEventToEdit(null);
+          }}
+          individualId={id ? Number(id) : undefined}
+          event={eventToEdit}
+        />
+      )}
+
+      {/* Section modals (double-click on card) */}
+      {!readOnly && individual && (
+        <>
+          <ModalBasicInfo
+            open={sectionModal === 'basic'}
+            onClose={() => setSectionModal(null)}
+            individual={individual}
+          />
+          <ModalNames
+            open={sectionModal === 'names'}
+            onClose={() => setSectionModal(null)}
+            individual={individual}
+          />
+          <ModalBirth
+            open={sectionModal === 'birth'}
+            onClose={() => setSectionModal(null)}
+            individual={individual}
+          />
+          <ModalDeath
+            open={sectionModal === 'death'}
+            onClose={() => setSectionModal(null)}
+            individual={individual}
+          />
+          <ModalNotes
+            open={sectionModal === 'notes'}
+            onClose={() => setSectionModal(null)}
+            individual={individual}
+          />
+          <ModalEventsSection
+            open={sectionModal === 'events'}
+            onClose={() => setSectionModal(null)}
+            events={events ?? []}
+            onAddEvent={() => {
+              setEventToEdit(null);
+              setEventDialogOpen(true);
+            }}
+            onEditEvent={(ev) => {
+              setEventToEdit(ev);
+              setEventDialogOpen(true);
+            }}
+            onDeleteEvent={(ev) => deleteEventMutation.mutate(ev.id)}
+          />
+          <ModalPhotosSection
+            open={sectionModal === 'photos'}
+            onClose={() => setSectionModal(null)}
+            photos={sortedPhotoMedia}
+            photoCacheBust={photoCacheBust}
+            onAddPhoto={handleStartAddPhoto}
+            onEditPhoto={(item) => {
+              setEditingPhoto(item);
+              setNewPhotoSrc((prev) => {
+                if (prev) URL.revokeObjectURL(prev);
+                return null;
+              });
+              setShowPhotoDialog(true);
+            }}
+            onSetDefault={(mediaId) => setDefaultMutation.mutate(mediaId)}
+            onDeletePhoto={(mediaId) => deleteMediaMutation.mutate(mediaId)}
+          />
+          <ModalFamiliesSection
+            open={sectionModal === 'families'}
+            onClose={() => setSectionModal(null)}
+            families={relatedFamilies.map((family) => {
+              const isChild = family.children.some((c) => c.child_id === Number(id));
+              const member = family.members.find((m) => m.individual_id === Number(id));
+              return {
+                id: family.id,
+                gedcom_id: family.gedcom_id,
+                role: isChild ? 'Child' : member?.role || 'Member',
+              };
+            })}
+          />
+        </>
       )}
 
       <input
