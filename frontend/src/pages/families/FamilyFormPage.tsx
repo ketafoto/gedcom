@@ -157,16 +157,19 @@ export function FamilyFormPage() {
   });
 
   const onSubmit = async (data: FamilyFormData) => {
+    const members = data.members.filter((m) => m.individual_id && Number(m.individual_id) !== 0);
+    const children = data.children.filter((c) => c.child_id && Number(c.child_id) !== 0);
+
     if (isEditing) {
-      updateMutation.mutate({ fid: Number(id), data });
+      updateMutation.mutate({ fid: Number(id), data: { ...data, members, children } });
     } else {
       createMutation.mutate({
         ...data,
-        members: data.members.map((m) => ({
+        members: members.map((m) => ({
           individual_id: Number(m.individual_id),
           role: m.role,
         })),
-        children: data.children.map((c) => ({
+        children: children.map((c) => ({
           child_id: Number(c.child_id),
         })),
       });
@@ -230,13 +233,17 @@ export function FamilyFormPage() {
       setCreatedIndividualIds((prev) => [...prev, individual.id]);
       setDialogOpen(false);
 
+      queryClient.setQueryData<Individual[]>(['individuals'], (old) =>
+        old ? [...old, individual] : [individual]
+      );
+
       if (createTargetRef.current === 'member') {
         appendMember({ individual_id: individual.id, role: '' });
       } else {
         appendChild({ child_id: individual.id });
       }
     },
-    [appendMember, appendChild]
+    [appendMember, appendChild, queryClient]
   );
 
   // --- cancel with cleanup ---
@@ -313,7 +320,9 @@ export function FamilyFormPage() {
         {/* Spouses / Partners */}
         <Card title="Spouses / Partners">
           <div className="space-y-4">
-            {memberFields.map((field, index) => (
+            {memberFields.map((field, index) => {
+              const memberIdReg = register(`members.${index}.individual_id`);
+              return (
               <div
                 key={field.id}
                 className="flex items-start gap-4 p-4 border border-gray-200 rounded-lg"
@@ -324,7 +333,11 @@ export function FamilyFormPage() {
                       Individual
                     </label>
                     <select
-                      {...register(`members.${index}.individual_id`)}
+                      {...memberIdReg}
+                      onBlur={(e) => {
+                        memberIdReg.onBlur(e);
+                        if (!e.target.value) removeMember(index);
+                      }}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     >
                       <option value="">Select individual...</option>
@@ -350,7 +363,8 @@ export function FamilyFormPage() {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-            ))}
+              );
+            })}
             <div className="flex flex-wrap gap-3">
               <Button
                 type="button"
@@ -378,7 +392,9 @@ export function FamilyFormPage() {
         {/* Children */}
         <Card title="Children">
           <div className="space-y-4">
-            {childFields.map((field, index) => (
+            {childFields.map((field, index) => {
+              const childIdReg = register(`children.${index}.child_id`);
+              return (
               <div
                 key={field.id}
                 className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg"
@@ -388,7 +404,11 @@ export function FamilyFormPage() {
                     Child
                   </label>
                   <select
-                    {...register(`children.${index}.child_id`)}
+                    {...childIdReg}
+                    onBlur={(e) => {
+                      childIdReg.onBlur(e);
+                      if (!e.target.value) removeChild(index);
+                    }}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   >
                     <option value="">Select individual...</option>
@@ -407,7 +427,8 @@ export function FamilyFormPage() {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-            ))}
+              );
+            })}
             <div className="flex flex-wrap gap-3">
               <Button
                 type="button"
