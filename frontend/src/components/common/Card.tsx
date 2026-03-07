@@ -5,11 +5,17 @@ interface CardProps {
   className?: string;
   title?: string;
   actions?: ReactNode;
+  onDoubleClick?: () => void;
 }
 
-export function Card({ children, className = '', title, actions }: CardProps) {
+export function Card({ children, className = '', title, actions, onDoubleClick }: CardProps) {
   return (
-    <div className={`bg-white rounded-lg border border-gray-200 shadow-sm ${className}`}>
+    <div
+      className={`bg-white rounded-lg border border-gray-200 shadow-sm ${onDoubleClick ? 'cursor-pointer' : ''} ${className}`}
+      onDoubleClick={onDoubleClick}
+      role={onDoubleClick ? 'button' : undefined}
+      title={onDoubleClick ? 'Double-click to edit' : undefined}
+    >
       {(title || actions) && (
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           {title && <h3 className="text-lg font-semibold text-gray-900">{title}</h3>}

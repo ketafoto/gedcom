@@ -78,6 +78,8 @@ export function FamilyDetailPage() {
     return formatIndividualName(getLatestName(individual.names));
   };
 
+  const handleEdit = () => navigate(`/families/${id}/edit`);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -138,7 +140,7 @@ export function FamilyDetailPage() {
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Spouses */}
-          <Card title="Spouses / Partners">
+          <Card title="Spouses / Partners" onDoubleClick={handleEdit}>
             {family.members.length === 0 ? (
               <p className="text-gray-500 text-center py-4">No members added</p>
             ) : (
@@ -173,6 +175,7 @@ export function FamilyDetailPage() {
           {/* Children */}
           <Card
             title="Children"
+            onDoubleClick={handleEdit}
             actions={
               <Button variant="ghost" size="sm">
                 <Plus className="w-4 h-4 mr-1" />
@@ -215,7 +218,7 @@ export function FamilyDetailPage() {
 
           {/* Marriage Info */}
           {(family.marriage_date || family.marriage_date_approx || family.marriage_place) && (
-            <Card title="Marriage">
+            <Card title="Marriage" onDoubleClick={handleEdit}>
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 bg-rose-100 rounded-lg flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-rose-600" />
@@ -237,7 +240,7 @@ export function FamilyDetailPage() {
 
           {/* Divorce Info */}
           {(family.divorce_date || family.divorce_date_approx) && (
-            <Card title="Divorce">
+            <Card title="Divorce" onDoubleClick={handleEdit}>
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-gray-600" />
@@ -254,6 +257,7 @@ export function FamilyDetailPage() {
           {/* Events */}
           <Card
             title="Family Events"
+            onDoubleClick={handleEdit}
             actions={
               <Button variant="ghost" size="sm">
                 <Plus className="w-4 h-4 mr-1" />
@@ -288,7 +292,7 @@ export function FamilyDetailPage() {
 
           {/* Notes */}
           {family.notes && (
-            <Card title="Notes">
+            <Card title="Notes" onDoubleClick={handleEdit}>
               <p className="text-gray-700 whitespace-pre-wrap">{family.notes}</p>
             </Card>
           )}
@@ -299,6 +303,7 @@ export function FamilyDetailPage() {
           {/* Media */}
           <Card
             title="Media"
+            onDoubleClick={handleEdit}
             actions={
               <Button variant="ghost" size="sm">
                 <Plus className="w-4 h-4" />

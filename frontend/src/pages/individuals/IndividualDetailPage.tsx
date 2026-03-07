@@ -194,6 +194,9 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
   const primaryName = getLatestName(individual.names);
   const displayName = formatIndividualName(primaryName);
 
+  const handleEdit = () => navigate(`/individuals/${id}/edit`);
+  const cardEditProps = !readOnly ? { onDoubleClick: handleEdit } : {};
+
   // Find families where this individual is a member
   const relatedFamilies = (families || []).filter((family) =>
     family.members.some((m) => m.individual_id === Number(id)) ||
@@ -252,7 +255,7 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Basic Info */}
-          <Card title="Basic Information">
+          <Card title="Basic Information" {...cardEditProps}>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <dt className="text-sm font-medium text-gray-500">Sex</dt>
@@ -266,7 +269,7 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
           </Card>
 
           {/* Birth */}
-          <Card title="Birth">
+          <Card title="Birth" {...cardEditProps}>
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-emerald-600" />
@@ -287,7 +290,7 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
 
           {/* Death */}
           {(individual.death_date || individual.death_date_approx || individual.death_place) && (
-            <Card title="Death">
+            <Card title="Death" {...cardEditProps}>
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-gray-600" />
@@ -310,6 +313,7 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
           {/* Events */}
           <Card
             title="Events"
+            {...cardEditProps}
             actions={!readOnly ? (
               <Button variant="ghost" size="sm">
                 <Plus className="w-4 h-4 mr-1" />
@@ -344,7 +348,7 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
 
           {/* Notes */}
           {individual.notes && (
-            <Card title="Notes">
+            <Card title="Notes" {...cardEditProps}>
               <p className="text-gray-700 whitespace-pre-wrap">{individual.notes}</p>
             </Card>
           )}
@@ -354,7 +358,7 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
         <div className="space-y-6">
           {/* Alternative Names */}
           {individual.names.length > 1 && (
-            <Card title="Alternative Names">
+            <Card title="Alternative Names" {...cardEditProps}>
               <ul className="space-y-2">
                 {individual.names.slice(1).map((name, index) => (
                   <li key={index} className="text-gray-700">
@@ -371,6 +375,7 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
           {/* Families */}
           <Card
             title="Families"
+            {...cardEditProps}
             actions={!readOnly ? (
               <Button variant="ghost" size="sm">
                 <Plus className="w-4 h-4" />
@@ -410,6 +415,7 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
           {/* Photos */}
           <Card
             title="Photos"
+            {...cardEditProps}
             actions={!readOnly ? (
               <Button
                 variant="ghost"

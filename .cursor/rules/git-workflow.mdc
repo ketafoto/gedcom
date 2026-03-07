@@ -7,4 +7,4 @@ alwaysApply: true
 
 - When multiple tasks or features are requested at once, work on them one-by-one. Finish, commit, and push the current task before starting the next one.
 - After summarizing modifications, always propose a commit message at the end and wait for the user's approval before proceeding.
-- Always show the proposed commit message to the user and wait for confirmation before running `git commit`.
+- **Always get approval for the commit message before committing.** Show the proposed commit message to the user and do not run `git commit` until they approve (or provide an alternative message).
