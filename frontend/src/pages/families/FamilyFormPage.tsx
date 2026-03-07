@@ -161,19 +161,29 @@ export function FamilyFormPage() {
     const members = data.members.filter((m) => m.individual_id && Number(m.individual_id) !== 0);
     const children = data.children.filter((c) => c.child_id && Number(c.child_id) !== 0);
 
+    const clean = (s: string | undefined) => (s?.trim() || undefined);
+    const payload = {
+      gedcom_id: clean(data.gedcom_id),
+      marriage_date: clean(data.marriage_date) || undefined,
+      marriage_date_approx: clean(data.marriage_date_approx),
+      marriage_place: clean(data.marriage_place),
+      divorce_date: clean(data.divorce_date) || undefined,
+      divorce_date_approx: clean(data.divorce_date_approx),
+      family_type: clean(data.family_type),
+      notes: clean(data.notes),
+      members: members.map((m) => ({
+        individual_id: Number(m.individual_id),
+        role: m.role ?? undefined,
+      })),
+      children: children.map((c) => ({
+        child_id: Number(c.child_id),
+      })),
+    };
+
     if (isEditing) {
-      updateMutation.mutate({ fid: Number(id), data: { ...data, members, children } });
+      updateMutation.mutate({ fid: Number(id), data: payload });
     } else {
-      createMutation.mutate({
-        ...data,
-        members: members.map((m) => ({
-          individual_id: Number(m.individual_id),
-          role: m.role,
-        })),
-        children: children.map((c) => ({
-          child_id: Number(c.child_id),
-        })),
-      });
+      createMutation.mutate(payload);
     }
   };
 
