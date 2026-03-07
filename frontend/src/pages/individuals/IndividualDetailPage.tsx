@@ -23,6 +23,7 @@ import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
 import { PhotoUploadDialog } from '../../components/photo/PhotoUploadDialog';
 import toast from 'react-hot-toast';
+import { formatIndividualName, getLatestName } from '../../utils/nameUtils';
 import type { Media } from '../../types/models';
 
 interface IndividualDetailPageProps {
@@ -164,10 +165,7 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
   };
 
   const handleDelete = () => {
-    const primaryName = individual?.names[0];
-    const displayName = primaryName
-      ? `${primaryName.given_name || ''} ${primaryName.family_name || ''}`.trim() || 'Unnamed'
-      : 'Unnamed';
+    const displayName = formatIndividualName(getLatestName(individual?.names ?? []));
 
     if (window.confirm(`Are you sure you want to delete "${displayName}"?`)) {
       deleteMutation.mutate(Number(id));
@@ -193,10 +191,8 @@ export function IndividualDetailPage({ readOnly = false }: IndividualDetailPageP
     );
   }
 
-  const primaryName = individual.names[0];
-  const displayName = primaryName
-    ? `${primaryName.given_name || ''} ${primaryName.family_name || ''}`.trim() || 'Unnamed'
-    : 'Unnamed';
+  const primaryName = getLatestName(individual.names);
+  const displayName = formatIndividualName(primaryName);
 
   // Find families where this individual is a member
   const relatedFamilies = (families || []).filter((family) =>

@@ -6,6 +6,7 @@ import { individualsApi } from '../../api/individuals';
 import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
+import { formatIndividualName, getLatestName } from '../../utils/nameUtils';
 import type { Family } from '../../types/models';
 
 export function BulkEditFamiliesPage() {
@@ -48,14 +49,10 @@ export function BulkEditFamiliesPage() {
     },
   });
 
-  // Helper to get individual name
   const getIndividualName = (id: number) => {
     const ind = individuals?.find((i) => i.id === id);
     if (!ind) return `ID:${id}`;
-    const name = ind.names[0];
-    return name
-      ? `${name.given_name || ''} ${name.family_name || ''}`.trim() || 'Unnamed'
-      : 'Unnamed';
+    return formatIndividualName(getLatestName(ind.names));
   };
 
   // Filter families based on search

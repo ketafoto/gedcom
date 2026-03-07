@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { familiesApi } from '../../api/families';
 import { individualsApi } from '../../api/individuals';
+import { formatIndividualName, getLatestName } from '../../utils/nameUtils';
 import { eventsApi } from '../../api/events';
 import { mediaApi } from '../../api/media';
 import { Button } from '../../components/common/Button';
@@ -71,14 +72,10 @@ export function FamilyDetailPage() {
     return individuals?.find((i) => i.id === individualId);
   };
 
-  // Helper to get individual name
   const getIndividualName = (individualId: number) => {
     const individual = getIndividual(individualId);
     if (!individual) return 'Unknown';
-    const name = individual.names[0];
-    return name
-      ? `${name.given_name || ''} ${name.family_name || ''}`.trim() || 'Unnamed'
-      : 'Unnamed';
+    return formatIndividualName(getLatestName(individual.names));
   };
 
   if (isLoading) {

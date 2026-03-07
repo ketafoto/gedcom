@@ -8,6 +8,7 @@ import { Button } from '../../components/common/Button';
 import { Card } from '../../components/common/Card';
 import { Spinner } from '../../components/common/Spinner';
 import toast from 'react-hot-toast';
+import { formatIndividualName, getLatestName } from '../../utils/nameUtils';
 
 export function FamiliesListPage() {
   const navigate = useNavigate();
@@ -41,14 +42,10 @@ export function FamiliesListPage() {
     }
   };
 
-  // Helper to get individual name by ID
   const getIndividualName = (individualId: number) => {
     const individual = individuals?.find((i) => i.id === individualId);
     if (!individual) return 'Unknown';
-    const name = individual.names[0];
-    return name
-      ? `${name.given_name || ''} ${name.family_name || ''}`.trim() || 'Unnamed'
-      : 'Unnamed';
+    return formatIndividualName(getLatestName(individual.names));
   };
 
   // Filter families by search query

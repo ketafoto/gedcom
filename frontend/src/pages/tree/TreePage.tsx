@@ -12,6 +12,7 @@ import { DepthSlider } from '../../components/tree/DepthSlider';
 import { TreeLegend } from '../../components/tree/TreeLegend';
 import { ExportControls } from '../../components/tree/ExportControls';
 import { isPublicApp } from '../../config/appMode';
+import { formatIndividualName, getLatestName } from '../../utils/nameUtils';
 
 /**
  * Main tree visualization page.
@@ -91,10 +92,8 @@ export function TreePage() {
     return viewportRef.current.querySelector('.react-flow__viewport') as HTMLElement | null;
   }, []);
 
-  // Display name for header
-  const displayName = individual?.names[0]
-    ? `${individual.names[0].given_name || ''} ${individual.names[0].family_name || ''}`.trim() ||
-      'Unnamed'
+  const displayName = individual
+    ? formatIndividualName(getLatestName(individual.names))
     : 'Individual';
 
   return (

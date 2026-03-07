@@ -14,6 +14,7 @@ import { ApproxDateInput } from '../../components/common/ApproxDateInput';
 import { ComboSelect } from '../../components/common/ComboSelect';
 import { IndividualFormDialog } from '../../components/individuals/IndividualFormDialog';
 import toast from 'react-hot-toast';
+import { formatIndividualName, getLatestName } from '../../utils/nameUtils';
 import type { Individual } from '../../types/models';
 
 interface FamilyFormData {
@@ -180,11 +181,7 @@ export function FamilyFormPage() {
   const getIndividualName = (individualId: number) => {
     const individual = individuals?.find((i) => i.id === individualId);
     if (!individual) return `ID: ${individualId}`;
-    const name = individual.names[0];
-    return name
-      ? `${name.given_name || ''} ${name.family_name || ''}`.trim() ||
-          'Unnamed'
-      : 'Unnamed';
+    return formatIndividualName(getLatestName(individual.names));
   };
 
   const sortedIndividuals = useMemo(
