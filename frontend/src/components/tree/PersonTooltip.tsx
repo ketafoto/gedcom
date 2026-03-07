@@ -1,18 +1,36 @@
 import { createPortal } from 'react-dom';
-import type { TreeNode } from '../../types/models';
+import type { TreeNode, TreeNodeName } from '../../types/models';
 
 interface PersonTooltipProps {
   data: TreeNode;
   position: { x: number; y: number };
 }
 
+const NAME_TYPE_LABELS: Record<string, string> = {
+  birth: 'Birth name',
+  maiden: 'Maiden name',
+  married: 'Married name',
+  aka: 'Also known as',
+};
+
+function getNameTypeLabel(nameType?: string): string {
+  if (!nameType?.trim()) return 'Name';
+  const key = nameType.trim().toLowerCase();
+  if (NAME_TYPE_LABELS[key]) return NAME_TYPE_LABELS[key];
+  if (key.includes('maiden')) return 'Maiden name';
+  if (key.includes('married')) return 'Married name';
+  if (key.includes('aka') || key.includes('also known')) return 'Also known as';
+  if (key.includes('birth')) return 'Birth name';
+  return nameType;
+}
+
 /**
- * Floating tooltip showing a person's summary: birth, death, life events, notes.
+ * Floating tooltip showing a person's summary: names, birth, death, life events, notes.
  * Rendered via portal so it's not clipped by React Flow's viewport.
  */
 export function PersonTooltip({ data, position }: PersonTooltipProps) {
   const tooltipWidth = 300;
-  const tooltipMaxHeight = 320;
+  const tooltipMaxHeight = 380;
   const offsetX = 16;
   const offsetY = 16;
 
@@ -32,13 +50,18 @@ export function PersonTooltip({ data, position }: PersonTooltipProps) {
     return '';
   };
 
+  const displayName = (data.display_name || '').trim();
+  const names: TreeNodeName[] = (data.names ?? []).filter(
+    (n) => (n.formatted || '').trim() && (n.formatted || '').trim() !== displayName
+  );
   const birthDate = formatDate(data.birth_date, data.birth_date_approx);
   const deathDate = formatDate(data.death_date, data.death_date_approx);
+  const hasNames = names.length > 0;
   const hasBirth = birthDate || data.birth_place;
   const hasDeath = deathDate || data.death_place;
   const hasEvents = data.events.length > 0;
   const hasNotes = !!data.notes;
-  const hasAnyContent = hasBirth || hasDeath || hasEvents || hasNotes;
+  const hasAnyContent = hasNames || hasBirth || hasDeath || hasEvents || hasNotes;
 
   return createPortal(
     <div
@@ -59,9 +82,23 @@ export function PersonTooltip({ data, position }: PersonTooltipProps) {
           )}
         </div>
 
+        {/* All names (birth, maiden, married, aka, etc.) */}
+        {hasNames && (
+          <div className="mb-1.5 space-y-1">
+            {names.map((n, idx) => (
+              <div key={idx} className="text-xs">
+                <span className="font-medium text-gray-700">
+                  {getNameTypeLabel(n.name_type)}:
+                </span>
+                <span className="text-gray-600 ml-1">{n.formatted}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Birth */}
         {hasBirth && (
-          <div className="mb-1.5 text-xs">
+          <div className={`mb-1.5 text-xs ${hasNames ? 'mt-2 pt-2 border-t border-gray-100' : ''}`}>
             <span className="font-medium text-gray-700">Born</span>
             {birthDate && <span className="text-gray-500 ml-1">{birthDate}</span>}
             {data.birth_place && (

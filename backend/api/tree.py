@@ -112,6 +112,12 @@ def _get_all_photos(individual: models.Individual) -> List[schemas.TreeNodePhoto
     return photos
 
 
+def _format_name(given: Optional[str], family: Optional[str]) -> str:
+    """Single display string for a name."""
+    s = f"{given or ''} {family or ''}".strip()
+    return s if s else "—"
+
+
 def _build_node(
     individual: models.Individual,
     generation: int,
@@ -133,11 +139,24 @@ def _build_node(
             )
         )
 
+    sorted_names = sorted(
+        individual.names,
+        key=lambda n: (n.name_order if n.name_order is not None else 9999, n.id),
+    )
+    names = [
+        schemas.TreeNodeName(
+            name_type=n.name_type,
+            formatted=_format_name(n.given_name, n.family_name),
+        )
+        for n in sorted_names
+    ]
+
     return schemas.TreeNode(
         id=individual.id,
         gedcom_id=individual.gedcom_id,
         sex_code=individual.sex_code,
         display_name=_get_display_name(individual),
+        names=names,
         birth_date=str(individual.birth_date) if individual.birth_date else None,
         birth_date_approx=individual.birth_date_approx,
         birth_place=individual.birth_place,

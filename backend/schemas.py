@@ -211,6 +211,11 @@ class Header(HeaderBase):
 
 # ==================== Tree Visualization ====================
 
+class TreeNodeName(BaseModel):
+    """Single name entry for tree tooltip (type + formatted string)."""
+    name_type: Optional[str] = None  # e.g. birth, maiden, married, aka
+    formatted: str  # "Given Family" or "—" if empty
+
 class TreeNodeEvent(BaseModel):
     event_type: str
     event_date: Optional[str] = None
@@ -228,6 +233,7 @@ class TreeNode(BaseModel):
     gedcom_id: Optional[str] = None
     sex_code: Optional[str] = None
     display_name: str
+    names: List[TreeNodeName] = []  # All names for tooltip (birth, maiden, married, aka, etc.)
     birth_date: Optional[str] = None
     birth_date_approx: Optional[str] = None
     birth_place: Optional[str] = None

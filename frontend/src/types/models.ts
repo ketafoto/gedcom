@@ -202,6 +202,11 @@ export interface CreateViewerResponse {
 }
 
 // ==================== Tree Visualization ====================
+export interface TreeNodeName {
+  name_type?: string;
+  formatted: string;
+}
+
 export interface TreeNodeEvent {
   event_type: string;
   event_date?: string;
@@ -221,6 +226,7 @@ export interface TreeNode {
   gedcom_id?: string;
   sex_code?: string;
   display_name: string;
+  names?: TreeNodeName[];
   birth_date?: string;
   birth_date_approx?: string;
   birth_place?: string;
